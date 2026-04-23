@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#1a1a2e"/>
+
+  <!-- Left character (bjerg) - white skin, brown hair -->
+  <!-- Hair -->
+  <rect x="3" y="3" width="6" height="2" fill="#8B5E3C"/>
+  <rect x="2" y="5" width="8" height="1" fill="#8B5E3C"/>
+  <!-- Face -->
+  <rect x="3" y="5" width="6" height="5" fill="#FFDAB9"/>
+  <!-- Eyes -->
+  <rect x="4" y="7" width="1" height="1" fill="#4A90D9"/>
+  <rect x="7" y="7" width="1" height="1" fill="#4A90D9"/>
+  <!-- Body -->
+  <rect x="2" y="10" width="8" height="5" fill="#5B9BD5"/>
+  <!-- Legs -->
+  <rect x="3" y="15" width="2" height="4" fill="#2C3E50"/>
+  <rect x="7" y="15" width="2" height="4" fill="#2C3E50"/>
+  <!-- Shoes -->
+  <rect x="2" y="19" width="3" height="1" fill="#3D2B1F"/>
+  <rect x="7" y="19" width="3" height="1" fill="#3D2B1F"/>
+
+  <!-- Heart in middle -->
+  <rect x="14" y="9"  width="1" height="1" fill="#FF69B4"/>
+  <rect x="17" y="9"  width="1" height="1" fill="#FF69B4"/>
+  <rect x="13" y="10" width="2" height="1" fill="#FF69B4"/>
+  <rect x="16" y="10" width="3" height="1" fill="#FF69B4"/>
+  <rect x="13" y="11" width="6" height="1" fill="#FF4499"/>
+  <rect x="13" y="12" width="6" height="1" fill="#FF4499"/>
+  <rect x="14" y="13" width="4" height="1" fill="#FF69B4"/>
+  <rect x="15" y="14" width="2" height="1" fill="#FF69B4"/>
+
+  <!-- Right character (hungry) - warm skin, black long hair -->
+  <!-- Long hair -->
+  <rect x="21" y="3" width="8" height="2" fill="#1C1C1C"/>
+  <rect x="20" y="5" width="2" height="14" fill="#1C1C1C"/>
+  <rect x="30" y="5" width="2" height="14" fill="#1C1C1C"/>
+  <!-- Face -->
+  <rect x="22" y="5" width="8" height="5" fill="#F0C89A"/>
+  <!-- Eyes -->
+  <rect x="23" y="7" width="1" height="1" fill="#6B3D2A"/>
+  <rect x="27" y="7" width="1" height="1" fill="#6B3D2A"/>
+  <!-- Body -->
+  <rect x="21" y="10" width="10" height="5" fill="#E91E8C"/>
+  <!-- Legs -->
+  <rect x="22" y="15" width="3" height="4" fill="#5D4E75"/>
+  <rect x="27" y="15" width="3" height="4" fill="#5D4E75"/>
+  <!-- Shoes -->
+  <rect x="21" y="19" width="4" height="1" fill="#3D2B1F"/>
+  <rect x="27" y="19" width="4" height="1" fill="#3D2B1F"/>
+
+  <!-- Stars -->
+  <rect x="1"  y="1"  width="1" height="1" fill="#FFD700" opacity="0.6"/>
+  <rect x="30" y="2"  width="1" height="1" fill="#FFD700" opacity="0.6"/>
+  <rect x="15" y="1"  width="1" height="1" fill="#FFD700" opacity="0.4"/>
+  <rect x="1"  y="28" width="1" height="1" fill="#FFD700" opacity="0.4"/>
+  <rect x="30" y="28" width="1" height="1" fill="#FFD700" opacity="0.4"/>
+</svg>
