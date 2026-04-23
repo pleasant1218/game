@@ -687,6 +687,143 @@ header {
   z-index: 10;
 }
 
+/* ─── LOGIN OVERLAY ──────────────────────────────────────────── */
+
+#login-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,10,20,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  backdrop-filter: blur(6px);
+}
+
+.login-box {
+  background: var(--panel-bg);
+  border: 3px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 32px 28px;
+  width: 400px;
+  max-width: 95vw;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.login-title {
+  font-family: var(--pixel-font);
+  font-size: 13px;
+  color: var(--gold);
+  margin-bottom: 6px;
+  text-shadow: 0 0 12px rgba(255,215,0,0.4);
+}
+.login-title span { color: var(--accent); }
+
+.login-subtitle {
+  font-size: 20px;
+  color: var(--text-dim);
+  margin-bottom: 24px;
+}
+
+#login-cards {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.login-card {
+  flex: 1;
+  max-width: 160px;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 20px 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.login-card:hover {
+  border-color: var(--gold);
+  background: rgba(255,215,0,0.08);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255,215,0,0.2);
+}
+
+.login-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 4px solid;
+  margin: 0 auto 10px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.login-hair {
+  width: 100%;
+  border-radius: 50% 50% 0 0;
+}
+.login-eyes {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.login-eyes div {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+
+.login-name {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.login-coins { font-size: 15px; color: var(--gold); }
+.login-has-pin { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+.login-pin-label {
+  font-size: 15px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.login-pin-label strong { color: var(--gold); }
+
+/* ─── LOGOUT BUTTON ──────────────────────────────────────────── */
+
+#logout-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-dim);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--pixel-font);
+  font-size: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+#logout-btn:hover { background: rgba(233,69,96,0.15); border-color: var(--accent); color: var(--accent); }
+
+/* readonly tab */
+.player-tab.readonly { opacity: 0.45; cursor: default; }
+.player-tab.readonly:hover { background: rgba(255,255,255,0.05); }
+
+/* PIN form */
+.pin-form { padding: 4px 0; }
+
+/* shake animation for wrong PIN */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%,60%  { transform: translateX(-8px); }
+  40%,80%  { transform: translateX(8px); }
+}
+.shake { animation: shake 0.4s ease; }
+
 /* ─── RESPONSIVE ─────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
@@ -705,6 +842,25 @@ header {
 </head>
 <body>
 
+<!-- ─── LOGIN OVERLAY ──────────────────────────────────────── -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-title">Our Little World <span>♥</span></div>
+    <div class="login-subtitle">Who are you?</div>
+    <div id="login-cards"></div>
+    <div id="login-pin-section" style="display:none">
+      <div class="login-pin-label">PIN for <strong id="login-pin-for"></strong></div>
+      <input type="password" id="login-pin-input" class="input-full" placeholder="Enter your PIN"
+             maxlength="4" inputmode="numeric"
+             onkeydown="if(event.key==='Enter') submitLoginPin()">
+      <div class="form-actions" style="margin-top:8px">
+        <button class="btn-cancel" onclick="document.getElementById('login-pin-section').style.display='none'">Back</button>
+        <button class="btn-primary" onclick="submitLoginPin()">Enter ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="app">
 
   <!-- ─── HEADER ─────────────────────────────────────────── -->
@@ -714,6 +870,9 @@ header {
       <div id="tab-bjerg"></div>
       <div id="tab-hungry"></div>
     </div>
+    <button id="logout-btn" onclick="doLogout()" style="display:none">
+      <span class="logout-name"></span> · Log out
+    </button>
   </header>
 
   <!-- ─── MAIN LAYOUT ────────────────────────────────────── -->
@@ -722,7 +881,7 @@ header {
     <!-- Game Canvas -->
     <div id="game-container">
       <canvas id="game-canvas"></canvas>
-      <div class="game-hint">Click anywhere to move your character ✨</div>
+      <div class="game-hint">Drag your character to furniture · Click floor to walk ✨</div>
       <div id="coin-display">🪙 <span id="coin-count">0</span></div>
     </div>
 
@@ -740,15 +899,10 @@ header {
   </div>
 </div>
 
-<!-- Notification toast -->
 <div id="notification"></div>
-
-<!-- Confetti canvas -->
 <canvas id="confetti-canvas"></canvas>
 
-<!-- Scripts -->
 <script>
-// ===== js/data.js =====
 // Data layer - localStorage persistence
 
 const DEFAULT_PLAYERS = {
@@ -1013,9 +1167,33 @@ const Data = {
   getCoinRewards() { return COIN_REWARDS; }
 };
 
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
-// ===== js/sprites.js =====
-// Pixel art sprite renderer for characters
+const Auth = {
+  getLoggedIn() {
+    return sessionStorage.getItem('activePlayer'); // 'bjerg' | 'hungry' | null
+  },
+  login(playerId, pin) {
+    const stored = localStorage.getItem(`pin_${playerId}`);
+    if (stored && stored !== String(pin)) return false;
+    sessionStorage.setItem('activePlayer', playerId);
+    return true;
+  },
+  logout() {
+    sessionStorage.removeItem('activePlayer');
+    location.reload();
+  },
+  setPin(playerId, pin) {
+    if (pin) localStorage.setItem(`pin_${playerId}`, String(pin));
+    else     localStorage.removeItem(`pin_${playerId}`);
+  },
+  hasPin(playerId) {
+    return !!localStorage.getItem(`pin_${playerId}`);
+  },
+};
+
+
+// Pixel art sprite renderer
 
 const OUTFIT_COLORS = {
   default: { shirt: '#5B9BD5', pants: '#2C3E50' },
@@ -1028,153 +1206,156 @@ const OUTFIT_COLORS = {
   black:   { shirt: '#2C3E50', pants: '#1A252F' },
 };
 
-// Pixel art: 12 wide x 22 tall, each unit = S pixels on screen
-// Colors: 0=transparent, S=skin, H=hair, E=eye, M=mouth, C=shirt, P=pants, X=shoe, W=white/collar, D=hairDetail
-
-function buildSprite(player, scale = 4) {
-  const skin = player.skin;
-  const hair = player.hairColor;
-  const eye  = player.eyeColor;
+function buildSpriteGrid(player) {
+  const skin   = player.skin;
+  const hair   = player.hairColor;
+  const eye    = player.eyeColor;
   const outfit = OUTFIT_COLORS[player.outfit || 'default'];
   const shirt  = outfit.shirt;
   const pants  = outfit.pants;
   const shoe   = '#3D2B1F';
-  const isLong = player.hairStyle === 'long';
+  const T      = 'transparent';
 
-  // 12x24 pixel grid
-  const T = 'transparent';
-  const grid = [];
-
-  if (isLong) {
-    // Long hair character (hungry)
-    grid.push(
-      [T, T, hair, hair, hair, hair, hair, hair, hair, hair, T, T],      // 0
-      [T, hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T], // 1
+  if (player.hairStyle === 'long') {
+    // hungry — long hair reaching past waist
+    return [
+      [T,    T,    hair, hair, hair, hair, hair, hair, hair, hair, T,    T   ], // 0
+      [T,    hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T   ], // 1
       [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 2
       [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 3
-      [hair, skin, skin, eye, skin, skin, skin, eye, skin, skin, skin, hair],  // 4 eyes
-      [hair, skin, skin, eye, skin, skin, skin, eye, skin, skin, skin, hair],  // 5
+      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 4
+      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 5
       [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 6
       [hair, skin, skin, skin, '#D4896A', skin, skin, '#D4896A', skin, skin, skin, hair], // 7 cheeks
-      [hair, skin, skin, skin, skin, '#8B5E3C', '#8B5E3C', skin, skin, skin, skin, hair], // 8 mouth
+      [hair, skin, skin, skin, skin, '#7B3F00', '#7B3F00', skin, skin, skin, skin, hair], // 8 mouth
       [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 9
-      // body
-      [T, hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair, T], // 10
-      [hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair], // 11
-      [hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair], // 12
-      [hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair], // 13
-      [hair, shirt, shirt, pants, pants, pants, pants, pants, pants, shirt, shirt, hair], // 14
-      // lower
-      [T, hair, pants, pants, pants, pants, pants, pants, pants, pants, hair, T], // 15
-      [T, hair, pants, pants, T, T, T, T, pants, pants, hair, T],  // 16 legs split
-      [T, hair, pants, pants, T, T, T, T, pants, pants, hair, T],  // 17
-      [T, hair, pants, pants, T, T, T, T, pants, pants, hair, T],  // 18
-      [T, T, shoe, shoe, shoe, T, T, shoe, shoe, shoe, T, T],      // 19
-      [T, T, shoe, shoe, shoe, T, T, shoe, shoe, shoe, T, T],      // 20
-    );
+      // body — hair continues down sides
+      [hair, T,    shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T,    hair], // 10
+      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 11
+      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 12
+      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 13
+      [hair, shirt,shirt, pants, pants, pants, pants, pants, pants, shirt, shirt,hair], // 14
+      [hair, T,    pants, pants, pants, pants, pants, pants, pants, pants, T,    hair], // 15
+      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 16
+      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 17
+      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 18
+      [T,    T,    shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  T,    T   ], // 19
+      [T,    T,    shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  T,    T   ], // 20
+    ];
   } else {
-    // Short hair character (bjerg)
-    grid.push(
-      [T, T, hair, hair, hair, hair, hair, hair, hair, hair, T, T],      // 0
-      [T, hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T], // 1
-      [T, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, T], // 2
+    // bjerg — short hair
+    return [
+      [T,    T,    hair, hair, hair, hair, hair, hair, hair, hair, T,    T   ], // 0
+      [T,    hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T   ], // 1
+      [T,    hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, T   ], // 2
       [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 3
-      [hair, skin, skin, eye, skin, skin, skin, eye, skin, skin, skin, hair],  // 4 eyes
-      [hair, skin, skin, eye, skin, skin, skin, eye, skin, skin, skin, hair],  // 5
+      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 4
+      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 5
       [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 6
       [hair, skin, skin, skin, '#FFAA88', skin, skin, '#FFAA88', skin, skin, skin, hair], // 7 cheeks
-      [T, hair, skin, skin, skin, '#8B5E3C', '#8B5E3C', skin, skin, skin, hair, T], // 8 mouth
-      [T, T, hair, hair, skin, skin, skin, skin, hair, hair, T, T], // 9 chin/hairline
-      // body
-      [T, T, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T, T], // 10
-      [T, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T], // 11
-      [T, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T], // 12
-      [T, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T], // 13
-      [T, shirt, shirt, pants, pants, pants, pants, pants, pants, shirt, shirt, T], // 14
-      // lower
-      [T, T, pants, pants, pants, pants, pants, pants, pants, pants, T, T], // 15
-      [T, T, pants, pants, T, T, T, T, pants, pants, T, T],  // 16 legs split
-      [T, T, pants, pants, T, T, T, T, pants, pants, T, T],  // 17
-      [T, T, pants, pants, T, T, T, T, pants, pants, T, T],  // 18
-      [T, T, shoe, shoe, shoe, T, T, shoe, shoe, shoe, T, T], // 19
-      [T, T, shoe, shoe, shoe, T, T, shoe, shoe, shoe, T, T], // 20
-    );
+      [T,    hair, skin, skin, skin, '#7B3F00', '#7B3F00', skin, skin, skin, hair, T  ], // 8 mouth
+      [T,    T,    hair, hair, skin, skin, skin, skin, hair, hair, T,    T   ], // 9
+      [T,    T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T,    T   ], // 10
+      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 11
+      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 12
+      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 13
+      [T,    shirt,shirt,pants,pants,pants,pants,pants,pants,shirt,shirt,T   ], // 14
+      [T,    T,    pants,pants,pants,pants,pants,pants,pants,pants,T,    T   ], // 15
+      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 16
+      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 17
+      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 18
+      [T,    T,    shoe, shoe, shoe, T,    T,    shoe, shoe, shoe, T,    T   ], // 19
+      [T,    T,    shoe, shoe, shoe, T,    T,    shoe, shoe, shoe, T,    T   ], // 20
+    ];
   }
-
-  return { grid, scale, width: 12 * scale, height: 21 * scale };
 }
 
-function drawSprite(ctx, player, x, y, scale = 4, frame = 0, direction = 1) {
-  const { grid } = buildSprite(player, scale);
+// Draw a character with a specific pose
+// pose: 'stand' | 'sit' | 'lie'
+function drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle) {
+  const grid = buildSpriteGrid(player);
 
-  // Walking animation: slight bounce
-  const bounce = Math.sin(frame * 0.3) * scale * 0.5;
-  const yOff = y + bounce;
-
-  ctx.save();
-  if (direction === -1) {
-    ctx.translate(x + 12 * scale, 0);
-    ctx.scale(-1, 1);
-    for (let row = 0; row < grid.length; row++) {
-      for (let col = 0; col < grid[row].length; col++) {
-        const color = grid[row][col];
-        if (color === 'transparent') continue;
-        ctx.fillStyle = color;
-        ctx.fillRect(col * scale - 12 * scale, yOff + row * scale, scale, scale);
-      }
-    }
+  if (pose === 'lie') {
+    _drawLying(ctx, grid, x, y, scale);
+  } else if (pose === 'sit') {
+    _drawSitting(ctx, grid, x, y, scale);
   } else {
-    for (let row = 0; row < grid.length; row++) {
-      for (let col = 0; col < grid[row].length; col++) {
-        const color = grid[row][col];
-        if (color === 'transparent') continue;
-        ctx.fillStyle = color;
-        ctx.fillRect(x + col * scale, yOff + row * scale, scale, scale);
-      }
+    // Standing — bounce only while walking
+    const bounce = isIdle ? 0 : Math.sin(frame * 0.35) * scale * 0.4;
+    _drawGrid(ctx, grid, x, y + bounce, scale);
+  }
+}
+
+function _drawGrid(ctx, grid, x, y, scale) {
+  for (let row = 0; row < grid.length; row++) {
+    for (let col = 0; col < grid[row].length; col++) {
+      const c = grid[row][col];
+      if (c === 'transparent') continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.floor(x + col * scale), Math.floor(y + row * scale), scale, scale);
     }
   }
+}
+
+function _drawSitting(ctx, grid, x, y, scale) {
+  // Show rows 0-13 only (head + torso), clip legs
+  // Shift up slightly so torso sits above furniture seat
+  const yOff = y - 2 * scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x - 1, yOff - 1, 12 * scale + 2, 14 * scale + 2);
+  ctx.clip();
+  _drawGrid(ctx, grid, x, yOff, scale);
   ctx.restore();
 }
 
-function getSpriteSize(scale = 4) {
-  return { width: 12 * scale, height: 21 * scale };
+function _drawLying(ctx, grid, x, y, scale) {
+  // Rotate 90° counter-clockwise around character centre
+  const sw = 12 * scale;
+  const sh = 21 * scale;
+  const cx = x + sw / 2;
+  const cy = y + sh / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-Math.PI / 2);
+  ctx.scale(0.85, 0.85);
+  _drawGrid(ctx, grid, -sw / 2, -sh / 2, scale);
+  ctx.restore();
 }
 
-function drawCharacterWithName(ctx, player, x, y, scale = 4, frame = 0, isActive = false) {
-  const size = getSpriteSize(scale);
+function drawCharacterWithName(ctx, player, x, y, scale, frame, isActive, pose, isIdle) {
+  pose   = pose   || 'stand';
+  isIdle = isIdle !== false;
 
-  // Glow/highlight for active player
+  // Glow for active player
   if (isActive) {
     ctx.save();
     ctx.shadowColor = '#FFD700';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
-    ctx.fillRect(x - 4, y - 4, size.width + 8, size.height + 8);
+    ctx.shadowBlur  = 14;
+    ctx.fillStyle   = 'rgba(255,215,0,0.12)';
+    ctx.fillRect(x - 4, y - 4, 12 * scale + 8, 21 * scale + 8);
     ctx.restore();
   }
 
-  drawSprite(ctx, player, x, y, scale, frame);
+  drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle);
 
   // Name tag
-  const nameX = x + size.width / 2;
-  const nameY = y - 12;
+  const tagX = x + (12 * scale) / 2;
+  const tagY = y - 10;
   ctx.save();
-  ctx.font = `bold ${scale * 2.5}px "Press Start 2P", monospace`;
+  ctx.font      = `bold ${scale * 2.2}px "Press Start 2P", monospace`;
   ctx.textAlign = 'center';
-  const metrics = ctx.measureText(player.displayName);
-  const tagW = metrics.width + 12;
-  const tagH = scale * 3;
-
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  roundRect(ctx, nameX - tagW/2, nameY - tagH + 2, tagW, tagH, 4);
+  const tw  = ctx.measureText(player.displayName).width + 12;
+  const th  = scale * 2.8;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  _roundRect(ctx, tagX - tw / 2, tagY - th + 2, tw, th, 4);
   ctx.fill();
-
   ctx.fillStyle = isActive ? '#FFD700' : '#FFFFFF';
-  ctx.fillText(player.displayName, nameX, nameY);
+  ctx.fillText(player.displayName, tagX, tagY);
   ctx.restore();
 }
 
-function roundRect(ctx, x, y, w, h, r) {
+function _roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.lineTo(x + w - r, y);
@@ -1188,375 +1369,409 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+function getSpriteSize(scale) { return { w: 12 * scale, h: 21 * scale }; }
 
-// ===== js/scenes.js =====
-// Scene/room backgrounds renderer
 
-const SCENES = {
-  home: {
-    label: 'Home',
-    emoji: '🏠',
-    bgGradient: ['#8EC5FC', '#E0C3FC'],
-    floor: '#C8A882',
-    wall: '#F5E6C8',
-    draw: drawHome
-  },
-  classroom: {
-    label: 'Classroom',
-    emoji: '📚',
-    bgGradient: ['#a1c4fd', '#c2e9fb'],
-    floor: '#D4A853',
-    wall: '#E8D5A3',
-    draw: drawClassroom
-  },
-  office: {
-    label: 'Office',
-    emoji: '💼',
-    bgGradient: ['#667eea', '#764ba2'],
-    floor: '#8B7355',
-    wall: '#D4C5A9',
-    draw: drawOffice
-  },
-  cafe: {
-    label: 'Café',
-    emoji: '☕',
-    bgGradient: ['#f6d365', '#fda085'],
-    floor: '#C4956A',
-    wall: '#F5DEB3',
-    draw: drawCafe
-  }
-};
+// Scene rendering — home (with furniture) + work/classroom
 
-function drawScene(ctx, sceneId, canvasW, canvasH, furnitureBjerg = [], furnitureHungry = []) {
-  const scene = SCENES[sceneId] || SCENES.home;
-  scene.draw(ctx, canvasW, canvasH, furnitureBjerg, furnitureHungry);
+const SCALE = 4; // keep in sync with game.js
+
+// ─── Furniture snap zones ────────────────────────────────────────────────────
+
+function getHomeSnapZones(paneW, H) {
+  const floorY  = Math.floor(H * 0.6);
+  const spriteH = 21 * SCALE;
+  return [
+    { id: 'desk', label: '💻',  x: paneW * 0.18, y: floorY - spriteH - 28, pose: 'sit' },
+    { id: 'sofa', label: '🛋️', x: paneW * 0.44, y: floorY - spriteH - 16, pose: 'sit' },
+    { id: 'bed',  label: '🛏️', x: paneW * 0.67, y: floorY - spriteH + 14, pose: 'lie' },
+  ];
 }
 
-function drawPixelRect(ctx, x, y, w, h, color) {
+// Characters that are in a classroom sit at these positions (indexed 0,1)
+function getClassroomSeatPositions(paneW, H) {
+  const floorY  = Math.floor(H * 0.6);
+  const spriteH = 21 * SCALE;
+  return [
+    { x: paneW * 0.25, y: floorY - spriteH - 6 },
+    { x: paneW * 0.60, y: floorY - spriteH - 6 },
+  ];
+}
+
+function getOfficeSeatPositions(paneW, H) {
+  const floorY  = Math.floor(H * 0.6);
+  const spriteH = 21 * SCALE;
+  return [
+    { x: paneW * 0.18, y: floorY - spriteH - 28 },
+    { x: paneW * 0.60, y: floorY - spriteH - 28 },
+  ];
+}
+
+// ─── Master draw entry ───────────────────────────────────────────────────────
+
+// Draws the full canvas, splitting into panes when the two players are in
+// different locations. Returns pane layout so game.js knows where to place chars.
+function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H) {
+  const bs = bjergPlayer.status  || 'home';
+  const hs = hungryPlayer.status || 'home';
+
+  if (bs === hs) {
+    // Same scene — full width
+    _drawScenePane(ctx, bs, 0, W, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawSceneLabel(ctx, bs, 0, W);
+    return {
+      bjerg:  { offX: 0, paneW: W, scene: bs },
+      hungry: { offX: 0, paneW: W, scene: hs },
+    };
+  } else {
+    const half = Math.floor(W / 2);
+    // Left pane: bjerg's scene
+    _drawScenePane(ctx, bs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawSceneLabel(ctx, bs, 0, half);
+    // Divider
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(half - 2, 0, 4, H);
+    // Right pane: hungry's scene
+    ctx.save();
+    ctx.translate(half, 0);
+    _drawScenePane(ctx, hs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawSceneLabel(ctx, hs, 0, half);
+    ctx.restore();
+    return {
+      bjerg:  { offX: 0,    paneW: half, scene: bs },
+      hungry: { offX: half, paneW: half, scene: hs },
+    };
+  }
+}
+
+function _drawSceneLabel(ctx, sceneId, offX, paneW) {
+  const labels = { home: '🏠 Home', classroom: '📚 School', office: '💼 Work', cafe: '☕ Café' };
+  const text   = labels[sceneId] || sceneId;
+  ctx.save();
+  ctx.font      = '10px "Press Start 2P", monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, offX + paneW / 2, 18);
+  ctx.restore();
+}
+
+function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(offX, 0, paneW, H);
+  ctx.clip();
+  ctx.translate(offX, 0);
+  switch (sceneId) {
+    case 'home':      _drawHome(ctx, paneW, H, [...(furB||[]), ...(furH||[])]); break;
+    case 'classroom': _drawClassroom(ctx, paneW, H); break;
+    case 'office':    _drawOffice(ctx, paneW, H); break;
+    case 'cafe':      _drawCafe(ctx, paneW, H); break;
+    default:          _drawHome(ctx, paneW, H, []); break;
+  }
+  ctx.restore();
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function pxr(ctx, x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
 }
 
-function drawWindow(ctx, x, y) {
-  // Window frame
-  drawPixelRect(ctx, x, y, 72, 60, '#8B6914');
-  drawPixelRect(ctx, x + 4, y + 4, 64, 52, '#87CEEB');
-  // sky
-  drawPixelRect(ctx, x + 4, y + 4, 64, 30, '#87CEEB');
-  drawPixelRect(ctx, x + 4, y + 34, 64, 22, '#90EE90');
-  // cross
-  drawPixelRect(ctx, x + 34, y + 4, 4, 52, '#8B6914');
-  drawPixelRect(ctx, x + 4, y + 28, 64, 4, '#8B6914');
-  // sun
+function drawWindow(ctx, x, y, s = 1) {
+  const w = 72 * s, h = 60 * s;
+  pxr(ctx, x, y, w, h, '#8B6914');
+  pxr(ctx, x+4*s, y+4*s, 64*s, 52*s, '#87CEEB');
+  pxr(ctx, x+4*s, y+34*s, 64*s, 22*s, '#90EE90');
+  pxr(ctx, x+34*s, y+4*s, 4*s, 52*s, '#8B6914');
+  pxr(ctx, x+4*s, y+28*s, 64*s, 4*s, '#8B6914');
   ctx.fillStyle = '#FFD700';
-  ctx.beginPath();
-  ctx.arc(x + 54, y + 14, 8, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(x+54*s, y+14*s, 8*s, 0, Math.PI*2); ctx.fill();
 }
 
 function drawPlant(ctx, x, y) {
-  // pot
-  drawPixelRect(ctx, x + 8, y + 24, 16, 12, '#C0682A');
-  drawPixelRect(ctx, x + 6, y + 22, 20, 4, '#A0561E');
-  // stem
-  drawPixelRect(ctx, x + 15, y + 8, 2, 18, '#5D8A3C');
-  // leaves
+  pxr(ctx, x+8, y+28, 16, 12, '#C0682A');
+  pxr(ctx, x+6, y+26, 20, 4,  '#A0561E');
+  pxr(ctx, x+15, y+10, 2, 20, '#5D8A3C');
   ctx.fillStyle = '#4CAF50';
-  ctx.beginPath(); ctx.ellipse(x + 10, y + 14, 9, 6, -0.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x + 22, y + 10, 9, 6, 0.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x + 16, y + 6, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+10, y+16, 9, 6, -0.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+22, y+12, 9, 6, 0.5,  0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+16, y+8,  7, 5, 0,    0, Math.PI*2); ctx.fill();
 }
 
-function drawBookshelf(ctx, x, y) {
-  drawPixelRect(ctx, x, y, 60, 80, '#8B6914');
-  // shelves
-  for (let i = 0; i < 3; i++) {
-    const sy = y + 6 + i * 24;
-    drawPixelRect(ctx, x + 4, sy, 52, 18, '#F5F5DC');
-    const bookColors = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C'];
-    let bx = x + 6;
-    for (let b = 0; b < 6; b++) {
-      ctx.fillStyle = bookColors[(b + i * 2) % bookColors.length];
-      ctx.fillRect(bx, sy + 2, 7, 14);
-      bx += 8;
-    }
-    drawPixelRect(ctx, x + 4, sy + 18, 52, 3, '#8B6914');
-  }
-}
+// ─── HOME ─────────────────────────────────────────────────────────────────────
 
-function drawDesk(ctx, x, y) {
-  // desk surface
-  drawPixelRect(ctx, x, y, 120, 12, '#A0785A');
-  drawPixelRect(ctx, x, y + 2, 120, 4, '#C49A6C');
-  // legs
-  drawPixelRect(ctx, x + 6, y + 12, 10, 40, '#8B6914');
-  drawPixelRect(ctx, x + 104, y + 12, 10, 40, '#8B6914');
-  // monitor
-  drawPixelRect(ctx, x + 40, y - 44, 40, 30, '#2C3E50');
-  drawPixelRect(ctx, x + 44, y - 40, 32, 22, '#00BCD4');
-  drawPixelRect(ctx, x + 56, y - 14, 8, 14, '#2C3E50');
-  drawPixelRect(ctx, x + 48, y - 2, 24, 4, '#2C3E50');
-}
+function _drawHome(ctx, W, H, allFurniture) {
+  const floorY = Math.floor(H * 0.6);
 
-function drawChair(ctx, x, y) {
-  // seat
-  drawPixelRect(ctx, x, y, 40, 8, '#8B6914');
-  drawPixelRect(ctx, x + 2, y + 2, 36, 4, '#A0785A');
-  // back
-  drawPixelRect(ctx, x + 4, y - 32, 32, 34, '#8B6914');
-  drawPixelRect(ctx, x + 8, y - 28, 24, 26, '#C49A6C');
-  // legs
-  drawPixelRect(ctx, x + 4, y + 8, 6, 24, '#8B6914');
-  drawPixelRect(ctx, x + 30, y + 8, 6, 24, '#8B6914');
-}
-
-function drawTable(ctx, x, y) {
-  drawPixelRect(ctx, x, y, 100, 10, '#C49A6C');
-  drawPixelRect(ctx, x + 2, y + 2, 96, 4, '#D4AA7D');
-  drawPixelRect(ctx, x + 8, y + 10, 8, 36, '#A0785A');
-  drawPixelRect(ctx, x + 84, y + 10, 8, 36, '#A0785A');
-}
-
-function drawBlackboard(ctx, x, y) {
-  drawPixelRect(ctx, x, y, 140, 80, '#4A3728');
-  drawPixelRect(ctx, x + 6, y + 6, 128, 68, '#2D6A4F');
-  // chalk writing
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.font = '12px monospace';
-  ctx.fillText('y = mx + b', x + 20, y + 30);
-  ctx.fillText('∫ f(x)dx', x + 20, y + 50);
-  // chalk tray
-  drawPixelRect(ctx, x + 6, y + 74, 128, 8, '#5D4037');
-}
-
-function drawSofa(ctx, x, y) {
-  // base
-  drawPixelRect(ctx, x, y + 20, 130, 40, '#7B68EE');
-  drawPixelRect(ctx, x + 4, y + 24, 122, 32, '#9B8FFF');
-  // back
-  drawPixelRect(ctx, x, y, 130, 24, '#7B68EE');
-  drawPixelRect(ctx, x + 4, y + 4, 122, 18, '#9B8FFF');
-  // armrests
-  drawPixelRect(ctx, x, y, 18, 60, '#7B68EE');
-  drawPixelRect(ctx, x + 112, y, 18, 60, '#7B68EE');
-  // cushions
-  drawPixelRect(ctx, x + 20, y + 24, 40, 28, '#8B7BFF');
-  drawPixelRect(ctx, x + 68, y + 24, 40, 28, '#8B7BFF');
-  // legs
-  drawPixelRect(ctx, x + 4, y + 56, 12, 10, '#5D4037');
-  drawPixelRect(ctx, x + 114, y + 56, 12, 10, '#5D4037');
-}
-
-function drawRug(ctx, x, y, w, h) {
-  ctx.fillStyle = '#E8A0BF';
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = '#C77DAF';
-  ctx.fillRect(x + 8, y + 8, w - 16, h - 16);
-  // pattern
-  ctx.fillStyle = '#F5C6E0';
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 2; j++) {
-      ctx.fillRect(x + 24 + i * 36, y + 18 + j * 24, 14, 10);
-    }
-  }
-}
-
-function drawCoffeeTable(ctx, x, y) {
-  drawPixelRect(ctx, x, y, 80, 8, '#C49A6C');
-  drawPixelRect(ctx, x + 2, y + 2, 76, 4, '#D4AA7D');
-  drawPixelRect(ctx, x + 6, y + 8, 8, 20, '#A0785A');
-  drawPixelRect(ctx, x + 66, y + 8, 8, 20, '#A0785A');
-}
-
-function pixelStar(ctx, x, y, r, color) {
-  ctx.fillStyle = color;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-    const ix = r * Math.cos(angle), iy = r * Math.sin(angle);
-    i === 0 ? ctx.moveTo(ix, iy) : ctx.lineTo(ix, iy);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawHome(ctx, W, H, furnitureBjerg, furnitureHungry) {
-  const allFurniture = [...furnitureBjerg, ...furnitureHungry];
-
-  // Sky gradient background
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#B8D4F8');
-  grad.addColorStop(1, '#E8D5F5');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  // Sky gradient
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#B8D4F8'); g.addColorStop(1, '#E8D5F5');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
   // Wall
-  drawPixelRect(ctx, 0, 0, W, H * 0.6, '#F0E6D3');
-  // Wallpaper pattern
-  ctx.fillStyle = 'rgba(200, 170, 130, 0.15)';
-  for (let i = 0; i < W; i += 40) {
-    for (let j = 0; j < H * 0.6; j += 40) {
-      pixelStar(ctx, i + 20, j + 20, 5, 'rgba(200,170,130,0.2)');
+  pxr(ctx, 0, 0, W, floorY, '#F0E6D3');
+  // Subtle wallpaper dots
+  ctx.fillStyle = 'rgba(180,140,100,0.12)';
+  for (let xi = 20; xi < W; xi += 30)
+    for (let yi = 20; yi < floorY; yi += 30) {
+      ctx.beginPath(); ctx.arc(xi, yi, 2, 0, Math.PI*2); ctx.fill();
     }
-  }
 
   // Floor
-  const floorGrad = ctx.createLinearGradient(0, H * 0.6, 0, H);
-  floorGrad.addColorStop(0, '#D4A853');
-  floorGrad.addColorStop(1, '#B8893A');
-  ctx.fillStyle = floorGrad;
-  ctx.fillRect(0, H * 0.6, W, H * 0.4);
-  // Floor planks
-  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 60) {
-    ctx.beginPath(); ctx.moveTo(i, H * 0.6); ctx.lineTo(i, H); ctx.stroke();
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0, '#D4A853'); fg.addColorStop(1, '#B8893A');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H - floorY);
+  ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
+  for (let xi = 0; xi < W; xi += 55) {
+    ctx.beginPath(); ctx.moveTo(xi, floorY); ctx.lineTo(xi, H); ctx.stroke();
   }
-
-  // Baseboard
-  drawPixelRect(ctx, 0, H * 0.6, W, 6, '#C49A6C');
+  pxr(ctx, 0, floorY, W, 5, '#C49A6C'); // baseboard
 
   // Windows
-  drawWindow(ctx, 60, 40);
-  drawWindow(ctx, W - 140, 40);
+  drawWindow(ctx, W * 0.05, 30);
+  if (W > 300) drawWindow(ctx, W - 110, 30);
 
-  // Sofa
-  drawSofa(ctx, W/2 - 65, H * 0.35);
+  // Wall clock (centre top)
+  _drawClock(ctx, W / 2, 50);
 
-  // Rug
-  drawRug(ctx, W/2 - 80, H * 0.6, 160, 50);
+  // ── Wardrobe (left wall) ──
+  _drawWardrobe(ctx, W * 0.02, floorY - 110);
 
-  // Coffee table
-  drawCoffeeTable(ctx, W/2 - 40, H * 0.6 + 28);
+  // ── Computer desk ──
+  _drawComputerDesk(ctx, W * 0.14, floorY - 52);
 
-  // Furniture items
-  if (allFurniture.includes('plant')) drawPlant(ctx, W - 90, H * 0.6 - 36);
-  if (allFurniture.includes('bookshelf')) drawBookshelf(ctx, 20, H * 0.6 - 80);
+  // ── Sofa ──
+  _drawSofa(ctx, W * 0.36, floorY - 58);
 
-  // Wall clock
+  // ── Bed ──
+  _drawBed(ctx, W * 0.58, floorY - 40);
+
+  // Optional furniture from shop
+  if (allFurniture.includes('plant'))     drawPlant(ctx, W - 60, floorY - 44);
+  if (allFurniture.includes('bookshelf')) _drawBookshelf(ctx, W * 0.02, floorY - 100);
+}
+
+function _drawClock(ctx, cx, cy) {
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(W/2, 50, 22, 0, Math.PI * 2);
-  ctx.fillStyle = '#F5F5F0';
-  ctx.fill();
-  ctx.strokeStyle = '#8B6914';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  const now = new Date();
-  const hr = now.getHours() % 12, mn = now.getMinutes();
-  // hour hand
-  ctx.save();
-  ctx.translate(W/2, 50);
-  ctx.rotate((hr + mn/60) * (Math.PI*2/12) - Math.PI/2);
+  ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI*2);
+  ctx.fillStyle = '#F5F5F0'; ctx.fill();
+  ctx.strokeStyle = '#8B6914'; ctx.lineWidth = 3; ctx.stroke();
+  const now = new Date(), hr = now.getHours() % 12, mn = now.getMinutes();
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.rotate((hr + mn/60) * Math.PI/6 - Math.PI/2);
   ctx.strokeStyle = '#333'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(12,0); ctx.stroke();
-  ctx.restore();
-  // minute hand
-  ctx.save();
-  ctx.translate(W/2, 50);
-  ctx.rotate(mn * (Math.PI*2/60) - Math.PI/2);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(11,0); ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.rotate(mn * Math.PI/30 - Math.PI/2);
   ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(17,0); ctx.stroke();
-  ctx.restore();
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(15,0); ctx.stroke(); ctx.restore();
   ctx.restore();
 }
 
-function drawClassroom(ctx, W, H) {
-  // Sky
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#E0F0FF');
-  grad.addColorStop(1, '#F0F8FF');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+function _drawWardrobe(ctx, x, y) {
+  const w = 68, h = 110;
+  pxr(ctx, x, y, w, h, '#8B6914');
+  pxr(ctx, x+4, y+4, w-8, h-8, '#C49A6C');
+  // two doors
+  pxr(ctx, x+6, y+8, (w-16)/2, h-16, '#A0785A');
+  pxr(ctx, x+8+(w-16)/2, y+8, (w-16)/2, h-16, '#A0785A');
+  // handles
+  pxr(ctx, x+(w/2)-6, y+h/2-3, 4, 6, '#8B6914');
+  pxr(ctx, x+(w/2)+2, y+h/2-3, 4, 6, '#8B6914');
+  // top trim
+  pxr(ctx, x, y, w, 8, '#7B5010');
+}
 
-  // Wall
-  drawPixelRect(ctx, 0, 0, W, H * 0.6, '#E8D5A3');
-  // Floor
-  const fg = ctx.createLinearGradient(0, H * 0.6, 0, H);
-  fg.addColorStop(0, '#C9A84C'); fg.addColorStop(1, '#A88730');
-  ctx.fillStyle = fg; ctx.fillRect(0, H * 0.6, W, H * 0.4);
+function _drawComputerDesk(ctx, x, y) {
+  // Desk body
+  pxr(ctx, x, y, 110, 10, '#A0785A');
+  pxr(ctx, x, y+2, 110, 4, '#C49A6C');
+  pxr(ctx, x+6, y+10, 10, 40, '#8B6914');
+  pxr(ctx, x+94, y+10, 10, 40, '#8B6914');
+  // Monitor
+  pxr(ctx, x+30, y-46, 50, 34, '#1A1A2E');
+  pxr(ctx, x+34, y-42, 42, 26, '#00AACC');
+  // screen glow lines
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  for (let i = 0; i < 4; i++) ctx.fillRect(x+36, y-40+i*6, 38, 2);
+  pxr(ctx, x+52, y-12, 8, 12, '#1A1A2E');
+  pxr(ctx, x+42, y-2, 26, 4, '#1A1A2E');
+  // Keyboard
+  pxr(ctx, x+20, y-4, 60, 6, '#555');
+}
+
+function _drawSofa(ctx, x, y) {
+  // seat
+  pxr(ctx, x, y+22, 120, 36, '#7B68EE');
+  pxr(ctx, x+4, y+26, 112, 28, '#9B8FFF');
+  // back
+  pxr(ctx, x, y, 120, 26, '#7B68EE');
+  pxr(ctx, x+4, y+4, 112, 20, '#9B8FFF');
+  // armrests
+  pxr(ctx, x, y, 16, 58, '#7B68EE');
+  pxr(ctx, x+104, y, 16, 58, '#7B68EE');
+  // cushions
+  pxr(ctx, x+18, y+26, 36, 26, '#8B7BFF');
+  pxr(ctx, x+62, y+26, 36, 26, '#8B7BFF');
+  // legs
+  pxr(ctx, x+4, y+54, 10, 10, '#5D4037');
+  pxr(ctx, x+106, y+54, 10, 10, '#5D4037');
+}
+
+function _drawBed(ctx, x, y) {
+  const w = 130;
+  // frame
+  pxr(ctx, x, y, w, 70, '#8B6914');
+  // mattress
+  pxr(ctx, x+4, y+18, w-8, 50, '#F5E6CC');
+  // pillow
+  pxr(ctx, x+8, y+20, 36, 22, '#FFFFFF');
+  pxr(ctx, x+10, y+22, 32, 18, '#F0F0F0');
+  // blanket
+  pxr(ctx, x+4, y+38, w-8, 26, '#B0C4DE');
+  pxr(ctx, x+4, y+38, w-8, 6,  '#90A8C8');
+  // headboard
+  pxr(ctx, x, y, w, 16, '#7B5010');
+  pxr(ctx, x+6, y+3, 10, 10, '#9A6814');
+  pxr(ctx, x+w-16, y+3, 10, 10, '#9A6814');
+}
+
+function _drawBookshelf(ctx, x, y) {
+  pxr(ctx, x, y, 60, 80, '#8B6914');
+  const colors = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C'];
+  for (let row = 0; row < 3; row++) {
+    const sy = y + 6 + row * 24;
+    pxr(ctx, x+4, sy, 52, 18, '#F5F5DC');
+    for (let b = 0; b < 6; b++) {
+      ctx.fillStyle = colors[(b + row*2) % colors.length];
+      ctx.fillRect(x+6+b*8, sy+2, 7, 14);
+    }
+    pxr(ctx, x+4, sy+18, 52, 3, '#8B6914');
+  }
+}
+
+// ─── CLASSROOM ────────────────────────────────────────────────────────────────
+
+function _drawClassroom(ctx, W, H) {
+  const floorY = Math.floor(H * 0.6);
+  pxr(ctx, 0, 0, W, floorY, '#E8D5A3');
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0,'#C9A84C'); fg.addColorStop(1,'#A88730');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H-floorY);
   ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 50) { ctx.beginPath(); ctx.moveTo(i, H*0.6); ctx.lineTo(i, H); ctx.stroke(); }
-
-  drawPixelRect(ctx, 0, H * 0.6, W, 6, '#B8973C');
+  for (let xi = 0; xi < W; xi += 50) { ctx.beginPath(); ctx.moveTo(xi,floorY); ctx.lineTo(xi,H); ctx.stroke(); }
+  pxr(ctx, 0, floorY, W, 5, '#B8973C');
 
   // Blackboard
-  drawBlackboard(ctx, W/2 - 70, 30);
+  const bx = W/2 - 80;
+  pxr(ctx, bx, 20, 160, 90, '#4A3728');
+  pxr(ctx, bx+6, 26, 148, 78, '#2D6A4F');
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.font = '13px monospace';
+  ctx.fillText('y = mx + b', bx+20, 60);
+  ctx.fillText('∫ f(x) dx', bx+20, 82);
+  pxr(ctx, bx+6, 104, 148, 8, '#5D4037');
 
-  // Teacher's desk
-  drawDesk(ctx, W/2 - 60, H * 0.42);
+  // Teacher desk
+  _drawStudentDesk(ctx, W/2 - 55, floorY - 50);
 
   // Student desks
-  const deskY = H * 0.6 - 10;
-  drawDesk(ctx, 40, deskY);
-  drawChair(ctx, 55, deskY - 6);
-  drawDesk(ctx, W/2 - 60, deskY);
-  drawChair(ctx, W/2 - 45, deskY - 6);
-  drawDesk(ctx, W - 160, deskY);
-  drawChair(ctx, W - 145, deskY - 6);
+  const deskY = floorY - 50;
+  _drawStudentDesk(ctx, W * 0.15, deskY);
+  _drawStudentDesk(ctx, W * 0.55, deskY);
+  _drawChair(ctx, W * 0.16 + 5, deskY - 2);
+  _drawChair(ctx, W * 0.56 + 5, deskY - 2);
+  // Books on student desks
+  _drawBook(ctx, W*0.17 + 15, deskY - 8);
+  _drawBook(ctx, W*0.57 + 15, deskY - 8);
 
-  // Windows
-  drawWindow(ctx, W - 110, 40);
+  drawWindow(ctx, W - 100, 25, 0.85);
 }
 
-function drawOffice(ctx, W, H) {
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#DDE8F5'); grad.addColorStop(1, '#EEF3FA');
-  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+function _drawStudentDesk(ctx, x, y) {
+  pxr(ctx, x, y, 90, 10, '#A0785A');
+  pxr(ctx, x, y+2, 90, 4, '#C49A6C');
+  pxr(ctx, x+6, y+10, 8, 35, '#8B6914');
+  pxr(ctx, x+76, y+10, 8, 35, '#8B6914');
+}
 
-  drawPixelRect(ctx, 0, 0, W, H * 0.6, '#D4C5A9');
-  const fg = ctx.createLinearGradient(0, H*0.6, 0, H);
-  fg.addColorStop(0, '#8B7355'); fg.addColorStop(1, '#6B5535');
-  ctx.fillStyle = fg; ctx.fillRect(0, H*0.6, W, H*0.4);
+function _drawChair(ctx, x, y) {
+  pxr(ctx, x, y, 36, 7, '#8B6914');
+  pxr(ctx, x+3, y-28, 30, 30, '#8B6914');
+  pxr(ctx, x+7, y-24, 22, 22, '#C49A6C');
+  pxr(ctx, x+3, y+7, 6, 20, '#8B6914');
+  pxr(ctx, x+27, y+7, 6, 20, '#8B6914');
+}
+
+function _drawBook(ctx, x, y) {
+  pxr(ctx, x, y, 28, 6, '#E74C3C');
+  pxr(ctx, x+2, y+1, 24, 4, '#C0392B');
+  pxr(ctx, x+12, y, 2, 6, '#922B21');
+}
+
+// ─── OFFICE ───────────────────────────────────────────────────────────────────
+
+function _drawOffice(ctx, W, H) {
+  const floorY = Math.floor(H * 0.6);
+  pxr(ctx, 0, 0, W, floorY, '#D4C5A9');
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0,'#8B7355'); fg.addColorStop(1,'#6B5535');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H-floorY);
   ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 50) { ctx.beginPath(); ctx.moveTo(i,H*0.6); ctx.lineTo(i,H); ctx.stroke(); }
-  drawPixelRect(ctx, 0, H*0.6, W, 6, '#7A6545');
+  for (let xi = 0; xi < W; xi += 50) { ctx.beginPath(); ctx.moveTo(xi,floorY); ctx.lineTo(xi,H); ctx.stroke(); }
+  pxr(ctx, 0, floorY, W, 5, '#7A6545');
 
-  // Two desks with monitors
-  drawDesk(ctx, 60, H * 0.55);
-  drawDesk(ctx, W - 180, H * 0.55);
-  drawChair(ctx, 90, H * 0.55 - 4);
-  drawChair(ctx, W - 150, H * 0.55 - 4);
+  drawWindow(ctx, W/2 - 36, 28);
+  if (W > 300) { drawWindow(ctx, 20, 28); drawWindow(ctx, W-100, 28); }
 
-  drawBookshelf(ctx, W/2 - 30, H * 0.6 - 80);
-  drawWindow(ctx, W/2 - 36, 30);
-  drawWindow(ctx, 30, 30);
-  drawWindow(ctx, W - 110, 30);
+  // Two computer desks
+  _drawComputerDesk(ctx, W * 0.08, floorY - 52);
+  _drawComputerDesk(ctx, W * 0.55, floorY - 52);
+  _drawChair(ctx, W*0.09+8, floorY - 54);
+  _drawChair(ctx, W*0.56+8, floorY - 54);
+  _drawBookshelf(ctx, W/2 - 30, floorY - 100);
+  drawPlant(ctx, W - 56, floorY - 44);
 }
 
-function drawCafe(ctx, W, H) {
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#F9E4C8'); grad.addColorStop(1, '#FDEBD0');
-  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+// ─── CAFÉ ─────────────────────────────────────────────────────────────────────
 
-  drawPixelRect(ctx, 0, 0, W, H * 0.6, '#F5DEB3');
-  const fg = ctx.createLinearGradient(0, H*0.6, 0, H);
-  fg.addColorStop(0, '#C4956A'); fg.addColorStop(1, '#A0784A');
-  ctx.fillStyle = fg; ctx.fillRect(0, H*0.6, W, H*0.4);
+function _drawCafe(ctx, W, H) {
+  const floorY = Math.floor(H * 0.6);
+  pxr(ctx, 0, 0, W, floorY, '#F5DEB3');
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0,'#C4956A'); fg.addColorStop(1,'#A0784A');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H-floorY);
   ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 40) { ctx.beginPath(); ctx.moveTo(i,H*0.6); ctx.lineTo(i,H); ctx.stroke(); }
-  drawPixelRect(ctx, 0, H*0.6, W, 6, '#B8853A');
-
-  // Tables with chairs
-  drawTable(ctx, W/2 - 50, H * 0.55);
-  drawChair(ctx, W/2 - 40, H * 0.55 - 8);
-  drawChair(ctx, W/2 + 20, H * 0.55 - 8);
-  drawTable(ctx, 40, H * 0.55);
-  drawChair(ctx, 50, H * 0.55 - 8);
-
-  drawPlant(ctx, W - 70, H * 0.6 - 36);
-  drawPlant(ctx, 20, H * 0.6 - 36);
-  drawWindow(ctx, W/2 - 36, 30);
-  drawWindow(ctx, 20, 30);
+  for (let xi = 0; xi < W; xi += 40) { ctx.beginPath(); ctx.moveTo(xi,floorY); ctx.lineTo(xi,H); ctx.stroke(); }
+  pxr(ctx, 0, floorY, W, 5, '#B8853A');
+  _drawCafeTable(ctx, W/2-45, floorY-40);
+  _drawChair(ctx, W/2-38, floorY-44);
+  _drawChair(ctx, W/2+16, floorY-44);
+  drawPlant(ctx, W-60, floorY-44);
+  drawPlant(ctx, 10, floorY-44);
+  drawWindow(ctx, W/2-36, 28);
 }
 
-function getSceneList() { return SCENES; }
+function _drawCafeTable(ctx, x, y) {
+  pxr(ctx, x, y, 90, 10, '#C49A6C');
+  pxr(ctx, x+2, y+2, 86, 4, '#D4AA7D');
+  pxr(ctx, x+8, y+10, 8, 30, '#A0785A');
+  pxr(ctx, x+74, y+10, 8, 30, '#A0785A');
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+function getSceneList() {
+  return {
+    home:      { label: 'Home',       emoji: '🏠' },
+    classroom: { label: 'Classroom',  emoji: '📚' },
+    office:    { label: 'Work',       emoji: '💼' },
+    cafe:      { label: 'Café',       emoji: '☕' },
+  };
+}
 
 
-// ===== js/ui.js =====
 // UI panel management
 
 let currentPanel = 'goals';
@@ -1568,7 +1783,79 @@ let notification = null;
 let notifTimer = null;
 
 function setActivePlayer(id) { activePlayer = id; renderUI(); }
-function getActivePlayer() { return activePlayer; }
+function getActivePlayer() {
+  // If logged in, always return logged-in player as active
+  const loggedIn = typeof Auth !== 'undefined' ? Auth.getLoggedIn() : null;
+  return loggedIn || activePlayer;
+}
+
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+
+function showLoginScreen() {
+  document.getElementById('login-overlay').style.display = 'flex';
+}
+function hideLoginScreen() {
+  document.getElementById('login-overlay').style.display = 'none';
+}
+
+function renderLoginScreen() {
+  const data = Data.load();
+  const players = [data.players.bjerg, data.players.hungry];
+
+  document.getElementById('login-cards').innerHTML = players.map(p => `
+    <div class="login-card" onclick="selectLoginPlayer('${p.id}')">
+      <div class="login-avatar" style="background:${p.skin};border-color:${p.hairColor}">
+        <div class="login-hair" style="background:${p.hairColor};height:${p.hairStyle==='long'?'60%':'40%'}"></div>
+        <div class="login-eyes">
+          <div style="background:${p.eyeColor}"></div>
+          <div style="background:${p.eyeColor}"></div>
+        </div>
+      </div>
+      <div class="login-name">${p.displayName}</div>
+      <div class="login-coins">🪙 ${p.coins}</div>
+      ${Auth.hasPin(p.id) ? '<div class="login-has-pin">🔒 PIN set</div>' : ''}
+    </div>
+  `).join('');
+}
+
+let _pendingLoginId = null;
+
+function selectLoginPlayer(id) {
+  if (Auth.hasPin(id)) {
+    _pendingLoginId = id;
+    document.getElementById('login-pin-section').style.display = 'block';
+    document.getElementById('login-pin-for').textContent = id;
+    document.getElementById('login-pin-input').value = '';
+    document.getElementById('login-pin-input').focus();
+  } else {
+    Auth.login(id, null);
+    _finishLogin(id);
+  }
+}
+
+function submitLoginPin() {
+  const pin = document.getElementById('login-pin-input').value.trim();
+  if (Auth.login(_pendingLoginId, pin)) {
+    _finishLogin(_pendingLoginId);
+  } else {
+    document.getElementById('login-pin-input').classList.add('shake');
+    setTimeout(() => document.getElementById('login-pin-input').classList.remove('shake'), 500);
+    showNotification('Wrong PIN! Try again 🔒', 'warn');
+  }
+}
+
+function _finishLogin(id) {
+  activePlayer = id;
+  hideLoginScreen();
+  renderUI();
+  // Update logout button
+  document.getElementById('logout-btn').style.display = 'inline-flex';
+  document.getElementById('logout-btn').querySelector('.logout-name').textContent = id;
+}
+
+function doLogout() {
+  Auth.logout(); // reloads page
+}
 
 function showNotification(msg, type = 'coins') {
   clearTimeout(notifTimer);
@@ -1589,18 +1876,25 @@ function renderUI() {
 }
 
 function renderPlayerTabs() {
-  const data = Data.load();
-  const bjerg = data.players.bjerg;
-  const hungry = data.players.hungry;
+  const data     = Data.load();
+  const bjerg    = data.players.bjerg;
+  const hungry   = data.players.hungry;
+  const loggedIn = typeof Auth !== 'undefined' ? Auth.getLoggedIn() : null;
+  const cur      = getActivePlayer();
+
+  // When logged in, only show own tab (other is read-only, shown as info)
+  const canSwitch = !loggedIn;
 
   document.getElementById('tab-bjerg').innerHTML = `
-    <div class="player-tab ${activePlayer === 'bjerg' ? 'active' : ''}" onclick="setActivePlayer('bjerg')">
+    <div class="player-tab ${cur === 'bjerg' ? 'active' : ''} ${loggedIn && loggedIn !== 'bjerg' ? 'readonly' : ''}"
+         onclick="${canSwitch ? "setActivePlayer('bjerg')" : ''}">
       <div class="tab-avatar" style="background:${bjerg.skin};border-color:${bjerg.hairColor}"></div>
       <span>bjerg</span>
       <span class="tab-coins">🪙 ${bjerg.coins}</span>
     </div>`;
   document.getElementById('tab-hungry').innerHTML = `
-    <div class="player-tab ${activePlayer === 'hungry' ? 'active' : ''}" onclick="setActivePlayer('hungry')">
+    <div class="player-tab ${cur === 'hungry' ? 'active' : ''} ${loggedIn && loggedIn !== 'hungry' ? 'readonly' : ''}"
+         onclick="${canSwitch ? "setActivePlayer('hungry')" : ''}">
       <div class="tab-avatar" style="background:${hungry.skin};border-color:${hungry.hairColor}"></div>
       <span>hungry</span>
       <span class="tab-coins">🪙 ${hungry.coins}</span>
@@ -2032,9 +2326,9 @@ function renderStatusPanel() {
   html += `</div></div>`;
 
   // Stats summary
-  const totalGoals = player.goals.length;
+  const totalGoals     = player.goals.length;
   const completedGoals = player.goals.filter(g => g.completedAt).length;
-  const doneTodos = player.todos.filter(t => t.done).length;
+  const doneTodos      = player.todos.filter(t => t.done).length;
 
   html += `<div class="panel-section">
     <div class="section-header"><span>📊 Stats</span></div>
@@ -2054,15 +2348,41 @@ function renderStatusPanel() {
       <div>🎯 75% milestone → +150</div>
       <div>🏆 Complete goal → +500</div>
     </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="section-header"><span>🔒 PIN Lock</span></div>
+    <div class="coins-hint">Set a PIN so only you can control your character.</div>
+    <div class="pin-form">
+      <input type="password" id="pin-input" placeholder="New PIN (4 digits)" class="input-full" maxlength="4" inputmode="numeric">
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="clearPin()">Remove PIN</button>
+        <button class="btn-primary" onclick="savePin()">Save PIN</button>
+      </div>
+    </div>
   </div>`;
 
   return html;
 }
 
 function setStatus(statusId) {
-  Data.setStatus(activePlayer, statusId);
+  Data.setStatus(getActivePlayer(), statusId);
   renderUI();
   window.gameNeedsRedraw = true;
+}
+
+function savePin() {
+  const pin = document.getElementById('pin-input')?.value.trim();
+  if (!pin || pin.length < 4) { showNotification('Enter a 4-digit PIN ⚠️', 'warn'); return; }
+  Auth.setPin(getActivePlayer(), pin);
+  showNotification('PIN saved! 🔒', 'info');
+  renderUI();
+}
+
+function clearPin() {
+  Auth.setPin(getActivePlayer(), null);
+  showNotification('PIN removed', 'info');
+  renderUI();
 }
 
 // ─── CELEBRATION ─────────────────────────────────────────────────────────────
@@ -2109,158 +2429,355 @@ function escHtml(str) {
 }
 
 
-// ===== js/game.js =====
-// Main game loop and canvas rendering
+// Main game loop
 
-const SCALE = 4;
-const WALK_SPEED = 1.2;
+const SCALE       = 4;
+const WALK_SPEED  = 1.4;
+const SNAP_RADIUS = 55;
 
 let canvas, ctx;
 let frame = 0;
 let bjergState, hungryState;
-let animFrameId;
+let paneLayout = null; // set each frame by drawWorldAndGetPanes
 
 function initGame() {
   canvas = document.getElementById('game-canvas');
-  ctx = canvas.getContext('2d');
+  ctx    = canvas.getContext('2d');
   resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('resize', () => { resizeCanvas(); resetPositions(); });
 
-  bjergState  = { x: 0, y: 0, targetX: 0, frame: 0, dir: 1, idle: true, idleTimer: 0 };
-  hungryState = { x: 0, y: 0, targetX: 0, frame: 0, dir: 1, idle: true, idleTimer: 0 };
-
+  bjergState  = makeCharState();
+  hungryState = makeCharState();
   resetPositions();
-  gameLoop();
+  _bindEvents();
+  requestAnimationFrame(_loop);
+}
+
+function makeCharState() {
+  return {
+    x: 0, y: 0, targetX: 0,
+    frame: 0, dir: 1, idle: true, idleTimer: 0,
+    pose: 'stand', snapTarget: null,
+    dragging: false, dragOffX: 0,
+  };
 }
 
 function resizeCanvas() {
-  const container = document.getElementById('game-container');
-  canvas.width  = container.clientWidth;
-  canvas.height = container.clientHeight;
-  window.gameNeedsRedraw = true;
+  const c = document.getElementById('game-container');
+  canvas.width  = c.clientWidth;
+  canvas.height = c.clientHeight;
 }
 
 function resetPositions() {
   const W = canvas.width, H = canvas.height;
   const floorY = H * 0.6 - 21 * SCALE;
-  bjergState.x  = bjergState.targetX  = W * 0.3;
-  hungryState.x = hungryState.targetX = W * 0.6;
+  bjergState.x  = bjergState.targetX  = W * 0.28;
+  hungryState.x = hungryState.targetX = W * 0.62;
   bjergState.y  = hungryState.y = floorY;
+  bjergState.snapTarget  = null; bjergState.pose  = 'stand';
+  hungryState.snapTarget = null; hungryState.pose = 'stand';
 }
 
-function gameLoop() {
+// ─── Game loop ────────────────────────────────────────────────────────────────
+
+function _loop() {
   frame++;
-  update();
-  draw();
-  animFrameId = requestAnimationFrame(gameLoop);
+  _update();
+  _draw();
+  requestAnimationFrame(_loop);
 }
 
-function update() {
+function _update() {
   const data = Data.load();
-  updateCharacter(bjergState,  data.players.bjerg,  canvas.width, canvas.height);
-  updateCharacter(hungryState, data.players.hungry, canvas.width, canvas.height);
+  _updateChar(bjergState,  data.players.bjerg,  canvas.width, canvas.height);
+  _updateChar(hungryState, data.players.hungry, canvas.width, canvas.height);
 }
 
-function updateCharacter(state, player, W, H) {
-  const floorY = H * 0.6 - 21 * SCALE;
-  state.y = floorY;
+function _updateChar(state, player, W, H) {
+  // Characters in non-home scenes are auto-placed (no wandering)
+  const scene = player.status || 'home';
+  if (scene !== 'home') { state.idle = true; return; }
+  if (state.dragging || state.snapTarget) { state.idle = true; return; }
 
-  // Random wandering
+  const pW = paneLayout ? paneLayout[player.id]?.paneW : W;
+
+  // Random wander
   state.idleTimer++;
-  if (state.idleTimer > 180 + Math.random() * 200) {
+  if (state.idleTimer > 220 + Math.random() * 180) {
     state.idleTimer = 0;
-    const margin = 50;
-    state.targetX = margin + Math.random() * (W - margin * 2 - 12 * SCALE);
+    const margin = 40;
+    state.targetX = margin + Math.random() * ((pW || W) - margin * 2 - 12 * SCALE);
   }
 
   const dx = state.targetX - state.x;
   if (Math.abs(dx) > 2) {
-    state.x += Math.sign(dx) * WALK_SPEED;
-    state.dir = Math.sign(dx);
+    state.x   += Math.sign(dx) * WALK_SPEED;
+    state.dir  = Math.sign(dx);
     state.idle = false;
     state.frame++;
   } else {
-    state.x = state.targetX;
+    state.x    = state.targetX;
     state.idle = true;
   }
 }
 
-function draw() {
-  const data = Data.load();
-  const bjerg  = data.players.bjerg;
-  const hungry = data.players.hungry;
+// ─── Draw ─────────────────────────────────────────────────────────────────────
+
+function _draw() {
+  const data    = Data.load();
+  const bjerg   = data.players.bjerg;
+  const hungry  = data.players.hungry;
   const W = canvas.width, H = canvas.height;
 
   ctx.clearRect(0, 0, W, H);
 
-  // Draw the scene matching bjerg's current status (or home by default)
-  // We use the active player's status for the scene
-  const activeId  = typeof getActivePlayer !== 'undefined' ? getActivePlayer() : 'bjerg';
-  const sceneId   = data.players[activeId].status || 'home';
-  const allFurniture = [...bjerg.furniture, ...hungry.furniture];
+  // Draw rooms and get pane layout
+  paneLayout = drawWorldAndGetPanes(ctx, bjerg, hungry, W, H);
+  // Attach player ids for _updateChar
+  paneLayout.bjerg.id  = 'bjerg';
+  paneLayout.hungry.id = 'hungry';
 
-  drawScene(ctx, sceneId, W, H, bjerg.furniture, hungry.furniture);
+  // Position characters in their panes
+  _placeCharInScene(bjergState,  bjerg,  paneLayout.bjerg,  H, 0);
+  _placeCharInScene(hungryState, hungry, paneLayout.hungry, H, 1);
 
-  // Draw both characters
-  const isActiveB = activeId === 'bjerg';
-  const isActiveH = activeId === 'hungry';
+  const loggedIn = typeof Auth !== 'undefined' ? Auth.getLoggedIn() : null;
 
-  // Draw the less-active one first (behind)
-  if (bjergState.x < hungryState.x) {
-    drawCharacterWithName(ctx, bjerg,  bjergState.x,  bjergState.y,  SCALE, bjergState.frame,  isActiveB);
-    drawCharacterWithName(ctx, hungry, hungryState.x, hungryState.y, SCALE, hungryState.frame, isActiveH);
-  } else {
-    drawCharacterWithName(ctx, hungry, hungryState.x, hungryState.y, SCALE, hungryState.frame, isActiveH);
-    drawCharacterWithName(ctx, bjerg,  bjergState.x,  bjergState.y,  SCALE, bjergState.frame,  isActiveB);
-  }
+  // Draw back character first (whichever has smaller canvas X)
+  const bjergCanvasX  = bjergState.x  + paneLayout.bjerg.offX;
+  const hungryCanvasX = hungryState.x + paneLayout.hungry.offX;
 
-  // Click to teleport active character
-  window.gameNeedsRedraw = false;
+  const drawBjerg  = () => drawCharacterWithName(
+    ctx, bjerg,
+    bjergCanvasX, bjergState.y, SCALE, bjergState.frame,
+    !loggedIn || loggedIn === 'bjerg',
+    bjergState.pose, bjergState.idle
+  );
+  const drawHungry = () => drawCharacterWithName(
+    ctx, hungry,
+    hungryCanvasX, hungryState.y, SCALE, hungryState.frame,
+    !loggedIn || loggedIn === 'hungry',
+    hungryState.pose, hungryState.idle
+  );
+
+  if (bjergCanvasX <= hungryCanvasX) { drawBjerg(); drawHungry(); }
+  else                               { drawHungry(); drawBjerg(); }
 }
 
+// Place a character appropriately for their scene
+function _placeCharInScene(state, player, pane, H, seatIndex) {
+  const scene   = player.status || 'home';
+  const floorY  = Math.floor(H * 0.6) - 21 * SCALE;
+  const pW      = pane.paneW;
+
+  if (scene === 'classroom') {
+    const seats = getClassroomSeatPositions(pW, H);
+    const seat  = seats[seatIndex % seats.length];
+    state.x    = seat.x;
+    state.y    = seat.y;
+    state.pose = 'sit';
+    state.idle = true;
+    return;
+  }
+
+  if (scene === 'office') {
+    const seats = getOfficeSeatPositions(pW, H);
+    const seat  = seats[seatIndex % seats.length];
+    state.x    = seat.x;
+    state.y    = seat.y;
+    state.pose = 'sit';
+    state.idle = true;
+    return;
+  }
+
+  if (scene === 'cafe') {
+    state.x    = pW * (seatIndex === 0 ? 0.3 : 0.5);
+    state.y    = floorY;
+    state.pose = 'stand';
+    state.idle = true;
+    return;
+  }
+
+  // Home — position managed by dragging / wandering / snap
+  if (!state.snapTarget) {
+    state.y = floorY;
+  }
+}
+
+// ─── Input ────────────────────────────────────────────────────────────────────
+
+function _bindEvents() {
+  canvas.addEventListener('mousedown', _onDown);
+  canvas.addEventListener('mousemove', _onMove);
+  canvas.addEventListener('mouseup',   _onUp);
+  canvas.addEventListener('touchstart', e => _onDown(_touchToMouse(e)), { passive: true });
+  canvas.addEventListener('touchmove',  e => _onMove(_touchToMouse(e)), { passive: true });
+  canvas.addEventListener('touchend',   e => _onUp(_touchToMouse(e)));
+}
+
+function _touchToMouse(e) {
+  const t = e.touches[0] || e.changedTouches[0];
+  return { clientX: t.clientX, clientY: t.clientY };
+}
+
+function _canvasPos(e) {
+  const r  = canvas.getBoundingClientRect();
+  const sx = canvas.width  / r.width;
+  const sy = canvas.height / r.height;
+  return {
+    x: (e.clientX - r.left) * sx,
+    y: (e.clientY - r.top)  * sy,
+  };
+}
+
+function _getControlledState() {
+  const loggedIn = typeof Auth !== 'undefined' ? Auth.getLoggedIn() : null;
+  if (!loggedIn) return bjergState; // fallback: control bjerg
+  return loggedIn === 'hungry' ? hungryState : bjergState;
+}
+
+function _getControlledId() {
+  const loggedIn = typeof Auth !== 'undefined' ? Auth.getLoggedIn() : null;
+  if (!loggedIn) return 'bjerg';
+  return loggedIn;
+}
+
+function _onDown(e) {
+  const pos   = _canvasPos(e);
+  const id    = _getControlledId();
+  const state = _getControlledState();
+  const pane  = paneLayout?.[id];
+  if (!pane) return;
+
+  const cx = pos.x - pane.offX; // pane-relative x
+  const sw = 12 * SCALE, sh = 21 * SCALE;
+
+  // Hit-test character
+  if (cx >= state.x - 8 && cx <= state.x + sw + 8 &&
+      pos.y >= state.y - 8 && pos.y <= state.y + sh + 8) {
+    state.dragging  = true;
+    state.snapTarget = null;
+    state.pose      = 'stand';
+    state.dragOffX  = cx - state.x;
+  }
+}
+
+function _onMove(e) {
+  const pos   = _canvasPos(e);
+  const id    = _getControlledId();
+  const state = _getControlledState();
+  const pane  = paneLayout?.[id];
+  if (!pane || !state.dragging) return;
+
+  const cx  = pos.x - pane.offX;
+  const pW  = pane.paneW;
+  const newX = cx - state.dragOffX;
+  state.x       = Math.max(10, Math.min(pW - 12 * SCALE - 10, newX));
+  state.targetX = state.x;
+  state.idle    = true;
+}
+
+function _onUp(e) {
+  const id    = _getControlledId();
+  const state = _getControlledState();
+  const pane  = paneLayout?.[id];
+  if (!pane || !state.dragging) return;
+  state.dragging = false;
+
+  const player = Data.getPlayer(id);
+  if ((player.status || 'home') !== 'home') return;
+
+  // Try to snap
+  const snaps = getHomeSnapZones(pane.paneW, canvas.height);
+  for (const snap of snaps) {
+    if (Math.abs(state.x - snap.x) < SNAP_RADIUS) {
+      state.x          = snap.x;
+      state.targetX    = snap.x;
+      state.y          = snap.y;
+      state.snapTarget = snap.id;
+      state.pose       = snap.pose;
+      return;
+    }
+  }
+  // No snap — stay where dropped, standing on floor
+  state.y          = Math.floor(canvas.height * 0.6) - 21 * SCALE;
+  state.snapTarget = null;
+  state.pose       = 'stand';
+}
+
+// Allow clicking floor to walk (when not dragging)
+canvas?.addEventListener('click', _onClick);
 function setupCanvasClick() {
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const cx = (e.clientX - rect.left) * scaleX;
-    const margin = 30;
-    const clampedX = Math.max(margin, Math.min(canvas.width - margin - 12 * SCALE, cx));
-    const activeId = getActivePlayer();
-    if (activeId === 'bjerg')  bjergState.targetX  = clampedX;
-    else                       hungryState.targetX = clampedX;
-  });
+  // Click is already bound above; this function exists so index.html can call it
+}
+
+function _onClick(e) {
+  const pos   = _canvasPos(e);
+  const id    = _getControlledId();
+  const state = _getControlledState();
+  const pane  = paneLayout?.[id];
+  if (!pane) return;
+
+  const player = Data.getPlayer(id);
+  if ((player.status || 'home') !== 'home') return;
+
+  const sw = 12 * SCALE, sh = 21 * SCALE;
+  const cx = pos.x - pane.offX;
+
+  // Don't walk if clicking on the character itself
+  if (cx >= state.x - 4 && cx <= state.x + sw + 4 &&
+      pos.y >= state.y - 4 && pos.y <= state.y + sh + 4) return;
+
+  // Walk to clicked position
+  const pW     = pane.paneW;
+  const target = Math.max(10, Math.min(pW - sw - 10, cx - sw / 2));
+  state.targetX    = target;
+  state.snapTarget = null;
+  state.pose       = 'stand';
+  state.idleTimer  = 0;
 }
 
 </script>
 <script>
-  window.addEventListener('DOMContentLoaded', () => {
-    // Ensure defaults
-    ['bjerg', 'hungry'].forEach(id => {
-      const p = Data.getPlayer(id);
-      if (!p.ownedOutfits) Data.updatePlayer(id, { ownedOutfits: ['default'] });
-      if (!p.outfit)       Data.updatePlayer(id, { outfit: 'default' });
-      if (!p.status)       Data.updatePlayer(id, { status: 'home' });
-    });
-
-    // Seed demo data on first load
-    const bjerg = Data.getPlayer('bjerg');
-    if (bjerg.goals.length === 0) {
-      Data.addGoal('bjerg', { title: 'Reach 93 kg', current: 97, target: 93, unit: 'kg', isPrivate: false });
-      Data.addTodo('bjerg', 'Go to the gym', false);
-      Data.addTodo('bjerg', 'Drink 2L water today', false);
-      Data.addCustomReward('bjerg', { name: 'Go eat sushi 🍣', price: 800, emoji: '🍣' });
-    }
-    const hungry = Data.getPlayer('hungry');
-    if (hungry.goals.length === 0) {
-      Data.addGoal('hungry', { title: 'Read 12 books this year', current: 3, target: 12, unit: 'books', isPrivate: false });
-      Data.addTodo('hungry', 'Study for exam', false);
-      Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });
-    }
-
-    renderUI();
-    initGame();
-    setupCanvasClick();
+window.addEventListener('DOMContentLoaded', () => {
+  // Ensure defaults
+  ['bjerg', 'hungry'].forEach(id => {
+    const p = Data.getPlayer(id);
+    if (!p.ownedOutfits) Data.updatePlayer(id, { ownedOutfits: ['default'] });
+    if (!p.outfit)       Data.updatePlayer(id, { outfit: 'default' });
+    if (!p.status)       Data.updatePlayer(id, { status: 'home' });
   });
+
+  // Seed demo data on first load
+  const bjerg = Data.getPlayer('bjerg');
+  if (bjerg.goals.length === 0) {
+    Data.addGoal('bjerg', { title: 'Reach 93 kg', current: 97, target: 93, unit: 'kg', isPrivate: false });
+    Data.addTodo('bjerg', 'Go to the gym', false);
+    Data.addTodo('bjerg', 'Drink 2L water today', false);
+    Data.addCustomReward('bjerg', { name: 'Go eat sushi 🍣', price: 800, emoji: '🍣' });
+  }
+  const hungry = Data.getPlayer('hungry');
+  if (hungry.goals.length === 0) {
+    Data.addGoal('hungry', { title: 'Read 12 books this year', current: 3, target: 12, unit: 'books', isPrivate: false });
+    Data.addTodo('hungry', 'Study for exam', false);
+    Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });
+  }
+
+  // Show login or go straight in
+  const loggedIn = Auth.getLoggedIn();
+  if (loggedIn) {
+    activePlayer = loggedIn;
+    document.getElementById('logout-btn').style.display = 'inline-flex';
+    document.getElementById('logout-btn').querySelector('.logout-name').textContent = loggedIn;
+  } else {
+    renderLoginScreen();
+    showLoginScreen();
+  }
+
+  renderUI();
+  initGame();
+  setupCanvasClick();
+});
 </script>
 
 </body>

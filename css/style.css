@@ -678,6 +678,143 @@ header {
   z-index: 10;
 }
 
+/* ─── LOGIN OVERLAY ──────────────────────────────────────────── */
+
+#login-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,10,20,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  backdrop-filter: blur(6px);
+}
+
+.login-box {
+  background: var(--panel-bg);
+  border: 3px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 32px 28px;
+  width: 400px;
+  max-width: 95vw;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.login-title {
+  font-family: var(--pixel-font);
+  font-size: 13px;
+  color: var(--gold);
+  margin-bottom: 6px;
+  text-shadow: 0 0 12px rgba(255,215,0,0.4);
+}
+.login-title span { color: var(--accent); }
+
+.login-subtitle {
+  font-size: 20px;
+  color: var(--text-dim);
+  margin-bottom: 24px;
+}
+
+#login-cards {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.login-card {
+  flex: 1;
+  max-width: 160px;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 20px 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.login-card:hover {
+  border-color: var(--gold);
+  background: rgba(255,215,0,0.08);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255,215,0,0.2);
+}
+
+.login-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 4px solid;
+  margin: 0 auto 10px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.login-hair {
+  width: 100%;
+  border-radius: 50% 50% 0 0;
+}
+.login-eyes {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.login-eyes div {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+
+.login-name {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.login-coins { font-size: 15px; color: var(--gold); }
+.login-has-pin { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+.login-pin-label {
+  font-size: 15px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.login-pin-label strong { color: var(--gold); }
+
+/* ─── LOGOUT BUTTON ──────────────────────────────────────────── */
+
+#logout-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-dim);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--pixel-font);
+  font-size: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+#logout-btn:hover { background: rgba(233,69,96,0.15); border-color: var(--accent); color: var(--accent); }
+
+/* readonly tab */
+.player-tab.readonly { opacity: 0.45; cursor: default; }
+.player-tab.readonly:hover { background: rgba(255,255,255,0.05); }
+
+/* PIN form */
+.pin-form { padding: 4px 0; }
+
+/* shake animation for wrong PIN */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%,60%  { transform: translateX(-8px); }
+  40%,80%  { transform: translateX(8px); }
+}
+.shake { animation: shake 0.4s ease; }
+
 /* ─── RESPONSIVE ─────────────────────────────────────────────── */
 
 @media (max-width: 900px) {

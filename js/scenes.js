@@ -1,364 +1,398 @@
-// Scene/room backgrounds renderer
+// Scene rendering — home (with furniture) + work/classroom
 
-const SCENES = {
-  home: {
-    label: 'Home',
-    emoji: '🏠',
-    bgGradient: ['#8EC5FC', '#E0C3FC'],
-    floor: '#C8A882',
-    wall: '#F5E6C8',
-    draw: drawHome
-  },
-  classroom: {
-    label: 'Classroom',
-    emoji: '📚',
-    bgGradient: ['#a1c4fd', '#c2e9fb'],
-    floor: '#D4A853',
-    wall: '#E8D5A3',
-    draw: drawClassroom
-  },
-  office: {
-    label: 'Office',
-    emoji: '💼',
-    bgGradient: ['#667eea', '#764ba2'],
-    floor: '#8B7355',
-    wall: '#D4C5A9',
-    draw: drawOffice
-  },
-  cafe: {
-    label: 'Café',
-    emoji: '☕',
-    bgGradient: ['#f6d365', '#fda085'],
-    floor: '#C4956A',
-    wall: '#F5DEB3',
-    draw: drawCafe
-  }
-};
+const SCALE = 4; // keep in sync with game.js
 
-function drawScene(ctx, sceneId, canvasW, canvasH, furnitureBjerg = [], furnitureHungry = []) {
-  const scene = SCENES[sceneId] || SCENES.home;
-  scene.draw(ctx, canvasW, canvasH, furnitureBjerg, furnitureHungry);
+// ─── Furniture snap zones ────────────────────────────────────────────────────
+
+function getHomeSnapZones(paneW, H) {
+  const floorY  = Math.floor(H * 0.6);
+  const spriteH = 21 * SCALE;
+  return [
+    { id: 'desk', label: '💻',  x: paneW * 0.18, y: floorY - spriteH - 28, pose: 'sit' },
+    { id: 'sofa', label: '🛋️', x: paneW * 0.44, y: floorY - spriteH - 16, pose: 'sit' },
+    { id: 'bed',  label: '🛏️', x: paneW * 0.67, y: floorY - spriteH + 14, pose: 'lie' },
+  ];
 }
 
-function drawPixelRect(ctx, x, y, w, h, color) {
+// Characters that are in a classroom sit at these positions (indexed 0,1)
+function getClassroomSeatPositions(paneW, H) {
+  const floorY  = Math.floor(H * 0.6);
+  const spriteH = 21 * SCALE;
+  return [
+    { x: paneW * 0.25, y: floorY - spriteH - 6 },
+    { x: paneW * 0.60, y: floorY - spriteH - 6 },
+  ];
+}
+
+function getOfficeSeatPositions(paneW, H) {
+  const floorY  = Math.floor(H * 0.6);
+  const spriteH = 21 * SCALE;
+  return [
+    { x: paneW * 0.18, y: floorY - spriteH - 28 },
+    { x: paneW * 0.60, y: floorY - spriteH - 28 },
+  ];
+}
+
+// ─── Master draw entry ───────────────────────────────────────────────────────
+
+// Draws the full canvas, splitting into panes when the two players are in
+// different locations. Returns pane layout so game.js knows where to place chars.
+function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H) {
+  const bs = bjergPlayer.status  || 'home';
+  const hs = hungryPlayer.status || 'home';
+
+  if (bs === hs) {
+    // Same scene — full width
+    _drawScenePane(ctx, bs, 0, W, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawSceneLabel(ctx, bs, 0, W);
+    return {
+      bjerg:  { offX: 0, paneW: W, scene: bs },
+      hungry: { offX: 0, paneW: W, scene: hs },
+    };
+  } else {
+    const half = Math.floor(W / 2);
+    // Left pane: bjerg's scene
+    _drawScenePane(ctx, bs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawSceneLabel(ctx, bs, 0, half);
+    // Divider
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(half - 2, 0, 4, H);
+    // Right pane: hungry's scene
+    ctx.save();
+    ctx.translate(half, 0);
+    _drawScenePane(ctx, hs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawSceneLabel(ctx, hs, 0, half);
+    ctx.restore();
+    return {
+      bjerg:  { offX: 0,    paneW: half, scene: bs },
+      hungry: { offX: half, paneW: half, scene: hs },
+    };
+  }
+}
+
+function _drawSceneLabel(ctx, sceneId, offX, paneW) {
+  const labels = { home: '🏠 Home', classroom: '📚 School', office: '💼 Work', cafe: '☕ Café' };
+  const text   = labels[sceneId] || sceneId;
+  ctx.save();
+  ctx.font      = '10px "Press Start 2P", monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, offX + paneW / 2, 18);
+  ctx.restore();
+}
+
+function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(offX, 0, paneW, H);
+  ctx.clip();
+  ctx.translate(offX, 0);
+  switch (sceneId) {
+    case 'home':      _drawHome(ctx, paneW, H, [...(furB||[]), ...(furH||[])]); break;
+    case 'classroom': _drawClassroom(ctx, paneW, H); break;
+    case 'office':    _drawOffice(ctx, paneW, H); break;
+    case 'cafe':      _drawCafe(ctx, paneW, H); break;
+    default:          _drawHome(ctx, paneW, H, []); break;
+  }
+  ctx.restore();
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function pxr(ctx, x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
 }
 
-function drawWindow(ctx, x, y) {
-  // Window frame
-  drawPixelRect(ctx, x, y, 72, 60, '#8B6914');
-  drawPixelRect(ctx, x + 4, y + 4, 64, 52, '#87CEEB');
-  // sky
-  drawPixelRect(ctx, x + 4, y + 4, 64, 30, '#87CEEB');
-  drawPixelRect(ctx, x + 4, y + 34, 64, 22, '#90EE90');
-  // cross
-  drawPixelRect(ctx, x + 34, y + 4, 4, 52, '#8B6914');
-  drawPixelRect(ctx, x + 4, y + 28, 64, 4, '#8B6914');
-  // sun
+function drawWindow(ctx, x, y, s = 1) {
+  const w = 72 * s, h = 60 * s;
+  pxr(ctx, x, y, w, h, '#8B6914');
+  pxr(ctx, x+4*s, y+4*s, 64*s, 52*s, '#87CEEB');
+  pxr(ctx, x+4*s, y+34*s, 64*s, 22*s, '#90EE90');
+  pxr(ctx, x+34*s, y+4*s, 4*s, 52*s, '#8B6914');
+  pxr(ctx, x+4*s, y+28*s, 64*s, 4*s, '#8B6914');
   ctx.fillStyle = '#FFD700';
-  ctx.beginPath();
-  ctx.arc(x + 54, y + 14, 8, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(x+54*s, y+14*s, 8*s, 0, Math.PI*2); ctx.fill();
 }
 
 function drawPlant(ctx, x, y) {
-  // pot
-  drawPixelRect(ctx, x + 8, y + 24, 16, 12, '#C0682A');
-  drawPixelRect(ctx, x + 6, y + 22, 20, 4, '#A0561E');
-  // stem
-  drawPixelRect(ctx, x + 15, y + 8, 2, 18, '#5D8A3C');
-  // leaves
+  pxr(ctx, x+8, y+28, 16, 12, '#C0682A');
+  pxr(ctx, x+6, y+26, 20, 4,  '#A0561E');
+  pxr(ctx, x+15, y+10, 2, 20, '#5D8A3C');
   ctx.fillStyle = '#4CAF50';
-  ctx.beginPath(); ctx.ellipse(x + 10, y + 14, 9, 6, -0.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x + 22, y + 10, 9, 6, 0.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x + 16, y + 6, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+10, y+16, 9, 6, -0.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+22, y+12, 9, 6, 0.5,  0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+16, y+8,  7, 5, 0,    0, Math.PI*2); ctx.fill();
 }
 
-function drawBookshelf(ctx, x, y) {
-  drawPixelRect(ctx, x, y, 60, 80, '#8B6914');
-  // shelves
-  for (let i = 0; i < 3; i++) {
-    const sy = y + 6 + i * 24;
-    drawPixelRect(ctx, x + 4, sy, 52, 18, '#F5F5DC');
-    const bookColors = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C'];
-    let bx = x + 6;
-    for (let b = 0; b < 6; b++) {
-      ctx.fillStyle = bookColors[(b + i * 2) % bookColors.length];
-      ctx.fillRect(bx, sy + 2, 7, 14);
-      bx += 8;
-    }
-    drawPixelRect(ctx, x + 4, sy + 18, 52, 3, '#8B6914');
-  }
-}
+// ─── HOME ─────────────────────────────────────────────────────────────────────
 
-function drawDesk(ctx, x, y) {
-  // desk surface
-  drawPixelRect(ctx, x, y, 120, 12, '#A0785A');
-  drawPixelRect(ctx, x, y + 2, 120, 4, '#C49A6C');
-  // legs
-  drawPixelRect(ctx, x + 6, y + 12, 10, 40, '#8B6914');
-  drawPixelRect(ctx, x + 104, y + 12, 10, 40, '#8B6914');
-  // monitor
-  drawPixelRect(ctx, x + 40, y - 44, 40, 30, '#2C3E50');
-  drawPixelRect(ctx, x + 44, y - 40, 32, 22, '#00BCD4');
-  drawPixelRect(ctx, x + 56, y - 14, 8, 14, '#2C3E50');
-  drawPixelRect(ctx, x + 48, y - 2, 24, 4, '#2C3E50');
-}
+function _drawHome(ctx, W, H, allFurniture) {
+  const floorY = Math.floor(H * 0.6);
 
-function drawChair(ctx, x, y) {
-  // seat
-  drawPixelRect(ctx, x, y, 40, 8, '#8B6914');
-  drawPixelRect(ctx, x + 2, y + 2, 36, 4, '#A0785A');
-  // back
-  drawPixelRect(ctx, x + 4, y - 32, 32, 34, '#8B6914');
-  drawPixelRect(ctx, x + 8, y - 28, 24, 26, '#C49A6C');
-  // legs
-  drawPixelRect(ctx, x + 4, y + 8, 6, 24, '#8B6914');
-  drawPixelRect(ctx, x + 30, y + 8, 6, 24, '#8B6914');
-}
-
-function drawTable(ctx, x, y) {
-  drawPixelRect(ctx, x, y, 100, 10, '#C49A6C');
-  drawPixelRect(ctx, x + 2, y + 2, 96, 4, '#D4AA7D');
-  drawPixelRect(ctx, x + 8, y + 10, 8, 36, '#A0785A');
-  drawPixelRect(ctx, x + 84, y + 10, 8, 36, '#A0785A');
-}
-
-function drawBlackboard(ctx, x, y) {
-  drawPixelRect(ctx, x, y, 140, 80, '#4A3728');
-  drawPixelRect(ctx, x + 6, y + 6, 128, 68, '#2D6A4F');
-  // chalk writing
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.font = '12px monospace';
-  ctx.fillText('y = mx + b', x + 20, y + 30);
-  ctx.fillText('∫ f(x)dx', x + 20, y + 50);
-  // chalk tray
-  drawPixelRect(ctx, x + 6, y + 74, 128, 8, '#5D4037');
-}
-
-function drawSofa(ctx, x, y) {
-  // base
-  drawPixelRect(ctx, x, y + 20, 130, 40, '#7B68EE');
-  drawPixelRect(ctx, x + 4, y + 24, 122, 32, '#9B8FFF');
-  // back
-  drawPixelRect(ctx, x, y, 130, 24, '#7B68EE');
-  drawPixelRect(ctx, x + 4, y + 4, 122, 18, '#9B8FFF');
-  // armrests
-  drawPixelRect(ctx, x, y, 18, 60, '#7B68EE');
-  drawPixelRect(ctx, x + 112, y, 18, 60, '#7B68EE');
-  // cushions
-  drawPixelRect(ctx, x + 20, y + 24, 40, 28, '#8B7BFF');
-  drawPixelRect(ctx, x + 68, y + 24, 40, 28, '#8B7BFF');
-  // legs
-  drawPixelRect(ctx, x + 4, y + 56, 12, 10, '#5D4037');
-  drawPixelRect(ctx, x + 114, y + 56, 12, 10, '#5D4037');
-}
-
-function drawRug(ctx, x, y, w, h) {
-  ctx.fillStyle = '#E8A0BF';
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = '#C77DAF';
-  ctx.fillRect(x + 8, y + 8, w - 16, h - 16);
-  // pattern
-  ctx.fillStyle = '#F5C6E0';
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 2; j++) {
-      ctx.fillRect(x + 24 + i * 36, y + 18 + j * 24, 14, 10);
-    }
-  }
-}
-
-function drawCoffeeTable(ctx, x, y) {
-  drawPixelRect(ctx, x, y, 80, 8, '#C49A6C');
-  drawPixelRect(ctx, x + 2, y + 2, 76, 4, '#D4AA7D');
-  drawPixelRect(ctx, x + 6, y + 8, 8, 20, '#A0785A');
-  drawPixelRect(ctx, x + 66, y + 8, 8, 20, '#A0785A');
-}
-
-function pixelStar(ctx, x, y, r, color) {
-  ctx.fillStyle = color;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-    const ix = r * Math.cos(angle), iy = r * Math.sin(angle);
-    i === 0 ? ctx.moveTo(ix, iy) : ctx.lineTo(ix, iy);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawHome(ctx, W, H, furnitureBjerg, furnitureHungry) {
-  const allFurniture = [...furnitureBjerg, ...furnitureHungry];
-
-  // Sky gradient background
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#B8D4F8');
-  grad.addColorStop(1, '#E8D5F5');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  // Sky gradient
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#B8D4F8'); g.addColorStop(1, '#E8D5F5');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
   // Wall
-  drawPixelRect(ctx, 0, 0, W, H * 0.6, '#F0E6D3');
-  // Wallpaper pattern
-  ctx.fillStyle = 'rgba(200, 170, 130, 0.15)';
-  for (let i = 0; i < W; i += 40) {
-    for (let j = 0; j < H * 0.6; j += 40) {
-      pixelStar(ctx, i + 20, j + 20, 5, 'rgba(200,170,130,0.2)');
+  pxr(ctx, 0, 0, W, floorY, '#F0E6D3');
+  // Subtle wallpaper dots
+  ctx.fillStyle = 'rgba(180,140,100,0.12)';
+  for (let xi = 20; xi < W; xi += 30)
+    for (let yi = 20; yi < floorY; yi += 30) {
+      ctx.beginPath(); ctx.arc(xi, yi, 2, 0, Math.PI*2); ctx.fill();
     }
-  }
 
   // Floor
-  const floorGrad = ctx.createLinearGradient(0, H * 0.6, 0, H);
-  floorGrad.addColorStop(0, '#D4A853');
-  floorGrad.addColorStop(1, '#B8893A');
-  ctx.fillStyle = floorGrad;
-  ctx.fillRect(0, H * 0.6, W, H * 0.4);
-  // Floor planks
-  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 60) {
-    ctx.beginPath(); ctx.moveTo(i, H * 0.6); ctx.lineTo(i, H); ctx.stroke();
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0, '#D4A853'); fg.addColorStop(1, '#B8893A');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H - floorY);
+  ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
+  for (let xi = 0; xi < W; xi += 55) {
+    ctx.beginPath(); ctx.moveTo(xi, floorY); ctx.lineTo(xi, H); ctx.stroke();
   }
-
-  // Baseboard
-  drawPixelRect(ctx, 0, H * 0.6, W, 6, '#C49A6C');
+  pxr(ctx, 0, floorY, W, 5, '#C49A6C'); // baseboard
 
   // Windows
-  drawWindow(ctx, 60, 40);
-  drawWindow(ctx, W - 140, 40);
+  drawWindow(ctx, W * 0.05, 30);
+  if (W > 300) drawWindow(ctx, W - 110, 30);
 
-  // Sofa
-  drawSofa(ctx, W/2 - 65, H * 0.35);
+  // Wall clock (centre top)
+  _drawClock(ctx, W / 2, 50);
 
-  // Rug
-  drawRug(ctx, W/2 - 80, H * 0.6, 160, 50);
+  // ── Wardrobe (left wall) ──
+  _drawWardrobe(ctx, W * 0.02, floorY - 110);
 
-  // Coffee table
-  drawCoffeeTable(ctx, W/2 - 40, H * 0.6 + 28);
+  // ── Computer desk ──
+  _drawComputerDesk(ctx, W * 0.14, floorY - 52);
 
-  // Furniture items
-  if (allFurniture.includes('plant')) drawPlant(ctx, W - 90, H * 0.6 - 36);
-  if (allFurniture.includes('bookshelf')) drawBookshelf(ctx, 20, H * 0.6 - 80);
+  // ── Sofa ──
+  _drawSofa(ctx, W * 0.36, floorY - 58);
 
-  // Wall clock
+  // ── Bed ──
+  _drawBed(ctx, W * 0.58, floorY - 40);
+
+  // Optional furniture from shop
+  if (allFurniture.includes('plant'))     drawPlant(ctx, W - 60, floorY - 44);
+  if (allFurniture.includes('bookshelf')) _drawBookshelf(ctx, W * 0.02, floorY - 100);
+}
+
+function _drawClock(ctx, cx, cy) {
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(W/2, 50, 22, 0, Math.PI * 2);
-  ctx.fillStyle = '#F5F5F0';
-  ctx.fill();
-  ctx.strokeStyle = '#8B6914';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  const now = new Date();
-  const hr = now.getHours() % 12, mn = now.getMinutes();
-  // hour hand
-  ctx.save();
-  ctx.translate(W/2, 50);
-  ctx.rotate((hr + mn/60) * (Math.PI*2/12) - Math.PI/2);
+  ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI*2);
+  ctx.fillStyle = '#F5F5F0'; ctx.fill();
+  ctx.strokeStyle = '#8B6914'; ctx.lineWidth = 3; ctx.stroke();
+  const now = new Date(), hr = now.getHours() % 12, mn = now.getMinutes();
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.rotate((hr + mn/60) * Math.PI/6 - Math.PI/2);
   ctx.strokeStyle = '#333'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(12,0); ctx.stroke();
-  ctx.restore();
-  // minute hand
-  ctx.save();
-  ctx.translate(W/2, 50);
-  ctx.rotate(mn * (Math.PI*2/60) - Math.PI/2);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(11,0); ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.rotate(mn * Math.PI/30 - Math.PI/2);
   ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(17,0); ctx.stroke();
-  ctx.restore();
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(15,0); ctx.stroke(); ctx.restore();
   ctx.restore();
 }
 
-function drawClassroom(ctx, W, H) {
-  // Sky
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#E0F0FF');
-  grad.addColorStop(1, '#F0F8FF');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+function _drawWardrobe(ctx, x, y) {
+  const w = 68, h = 110;
+  pxr(ctx, x, y, w, h, '#8B6914');
+  pxr(ctx, x+4, y+4, w-8, h-8, '#C49A6C');
+  // two doors
+  pxr(ctx, x+6, y+8, (w-16)/2, h-16, '#A0785A');
+  pxr(ctx, x+8+(w-16)/2, y+8, (w-16)/2, h-16, '#A0785A');
+  // handles
+  pxr(ctx, x+(w/2)-6, y+h/2-3, 4, 6, '#8B6914');
+  pxr(ctx, x+(w/2)+2, y+h/2-3, 4, 6, '#8B6914');
+  // top trim
+  pxr(ctx, x, y, w, 8, '#7B5010');
+}
 
-  // Wall
-  drawPixelRect(ctx, 0, 0, W, H * 0.6, '#E8D5A3');
-  // Floor
-  const fg = ctx.createLinearGradient(0, H * 0.6, 0, H);
-  fg.addColorStop(0, '#C9A84C'); fg.addColorStop(1, '#A88730');
-  ctx.fillStyle = fg; ctx.fillRect(0, H * 0.6, W, H * 0.4);
+function _drawComputerDesk(ctx, x, y) {
+  // Desk body
+  pxr(ctx, x, y, 110, 10, '#A0785A');
+  pxr(ctx, x, y+2, 110, 4, '#C49A6C');
+  pxr(ctx, x+6, y+10, 10, 40, '#8B6914');
+  pxr(ctx, x+94, y+10, 10, 40, '#8B6914');
+  // Monitor
+  pxr(ctx, x+30, y-46, 50, 34, '#1A1A2E');
+  pxr(ctx, x+34, y-42, 42, 26, '#00AACC');
+  // screen glow lines
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  for (let i = 0; i < 4; i++) ctx.fillRect(x+36, y-40+i*6, 38, 2);
+  pxr(ctx, x+52, y-12, 8, 12, '#1A1A2E');
+  pxr(ctx, x+42, y-2, 26, 4, '#1A1A2E');
+  // Keyboard
+  pxr(ctx, x+20, y-4, 60, 6, '#555');
+}
+
+function _drawSofa(ctx, x, y) {
+  // seat
+  pxr(ctx, x, y+22, 120, 36, '#7B68EE');
+  pxr(ctx, x+4, y+26, 112, 28, '#9B8FFF');
+  // back
+  pxr(ctx, x, y, 120, 26, '#7B68EE');
+  pxr(ctx, x+4, y+4, 112, 20, '#9B8FFF');
+  // armrests
+  pxr(ctx, x, y, 16, 58, '#7B68EE');
+  pxr(ctx, x+104, y, 16, 58, '#7B68EE');
+  // cushions
+  pxr(ctx, x+18, y+26, 36, 26, '#8B7BFF');
+  pxr(ctx, x+62, y+26, 36, 26, '#8B7BFF');
+  // legs
+  pxr(ctx, x+4, y+54, 10, 10, '#5D4037');
+  pxr(ctx, x+106, y+54, 10, 10, '#5D4037');
+}
+
+function _drawBed(ctx, x, y) {
+  const w = 130;
+  // frame
+  pxr(ctx, x, y, w, 70, '#8B6914');
+  // mattress
+  pxr(ctx, x+4, y+18, w-8, 50, '#F5E6CC');
+  // pillow
+  pxr(ctx, x+8, y+20, 36, 22, '#FFFFFF');
+  pxr(ctx, x+10, y+22, 32, 18, '#F0F0F0');
+  // blanket
+  pxr(ctx, x+4, y+38, w-8, 26, '#B0C4DE');
+  pxr(ctx, x+4, y+38, w-8, 6,  '#90A8C8');
+  // headboard
+  pxr(ctx, x, y, w, 16, '#7B5010');
+  pxr(ctx, x+6, y+3, 10, 10, '#9A6814');
+  pxr(ctx, x+w-16, y+3, 10, 10, '#9A6814');
+}
+
+function _drawBookshelf(ctx, x, y) {
+  pxr(ctx, x, y, 60, 80, '#8B6914');
+  const colors = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C'];
+  for (let row = 0; row < 3; row++) {
+    const sy = y + 6 + row * 24;
+    pxr(ctx, x+4, sy, 52, 18, '#F5F5DC');
+    for (let b = 0; b < 6; b++) {
+      ctx.fillStyle = colors[(b + row*2) % colors.length];
+      ctx.fillRect(x+6+b*8, sy+2, 7, 14);
+    }
+    pxr(ctx, x+4, sy+18, 52, 3, '#8B6914');
+  }
+}
+
+// ─── CLASSROOM ────────────────────────────────────────────────────────────────
+
+function _drawClassroom(ctx, W, H) {
+  const floorY = Math.floor(H * 0.6);
+  pxr(ctx, 0, 0, W, floorY, '#E8D5A3');
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0,'#C9A84C'); fg.addColorStop(1,'#A88730');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H-floorY);
   ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 50) { ctx.beginPath(); ctx.moveTo(i, H*0.6); ctx.lineTo(i, H); ctx.stroke(); }
-
-  drawPixelRect(ctx, 0, H * 0.6, W, 6, '#B8973C');
+  for (let xi = 0; xi < W; xi += 50) { ctx.beginPath(); ctx.moveTo(xi,floorY); ctx.lineTo(xi,H); ctx.stroke(); }
+  pxr(ctx, 0, floorY, W, 5, '#B8973C');
 
   // Blackboard
-  drawBlackboard(ctx, W/2 - 70, 30);
+  const bx = W/2 - 80;
+  pxr(ctx, bx, 20, 160, 90, '#4A3728');
+  pxr(ctx, bx+6, 26, 148, 78, '#2D6A4F');
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.font = '13px monospace';
+  ctx.fillText('y = mx + b', bx+20, 60);
+  ctx.fillText('∫ f(x) dx', bx+20, 82);
+  pxr(ctx, bx+6, 104, 148, 8, '#5D4037');
 
-  // Teacher's desk
-  drawDesk(ctx, W/2 - 60, H * 0.42);
+  // Teacher desk
+  _drawStudentDesk(ctx, W/2 - 55, floorY - 50);
 
   // Student desks
-  const deskY = H * 0.6 - 10;
-  drawDesk(ctx, 40, deskY);
-  drawChair(ctx, 55, deskY - 6);
-  drawDesk(ctx, W/2 - 60, deskY);
-  drawChair(ctx, W/2 - 45, deskY - 6);
-  drawDesk(ctx, W - 160, deskY);
-  drawChair(ctx, W - 145, deskY - 6);
+  const deskY = floorY - 50;
+  _drawStudentDesk(ctx, W * 0.15, deskY);
+  _drawStudentDesk(ctx, W * 0.55, deskY);
+  _drawChair(ctx, W * 0.16 + 5, deskY - 2);
+  _drawChair(ctx, W * 0.56 + 5, deskY - 2);
+  // Books on student desks
+  _drawBook(ctx, W*0.17 + 15, deskY - 8);
+  _drawBook(ctx, W*0.57 + 15, deskY - 8);
 
-  // Windows
-  drawWindow(ctx, W - 110, 40);
+  drawWindow(ctx, W - 100, 25, 0.85);
 }
 
-function drawOffice(ctx, W, H) {
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#DDE8F5'); grad.addColorStop(1, '#EEF3FA');
-  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+function _drawStudentDesk(ctx, x, y) {
+  pxr(ctx, x, y, 90, 10, '#A0785A');
+  pxr(ctx, x, y+2, 90, 4, '#C49A6C');
+  pxr(ctx, x+6, y+10, 8, 35, '#8B6914');
+  pxr(ctx, x+76, y+10, 8, 35, '#8B6914');
+}
 
-  drawPixelRect(ctx, 0, 0, W, H * 0.6, '#D4C5A9');
-  const fg = ctx.createLinearGradient(0, H*0.6, 0, H);
-  fg.addColorStop(0, '#8B7355'); fg.addColorStop(1, '#6B5535');
-  ctx.fillStyle = fg; ctx.fillRect(0, H*0.6, W, H*0.4);
+function _drawChair(ctx, x, y) {
+  pxr(ctx, x, y, 36, 7, '#8B6914');
+  pxr(ctx, x+3, y-28, 30, 30, '#8B6914');
+  pxr(ctx, x+7, y-24, 22, 22, '#C49A6C');
+  pxr(ctx, x+3, y+7, 6, 20, '#8B6914');
+  pxr(ctx, x+27, y+7, 6, 20, '#8B6914');
+}
+
+function _drawBook(ctx, x, y) {
+  pxr(ctx, x, y, 28, 6, '#E74C3C');
+  pxr(ctx, x+2, y+1, 24, 4, '#C0392B');
+  pxr(ctx, x+12, y, 2, 6, '#922B21');
+}
+
+// ─── OFFICE ───────────────────────────────────────────────────────────────────
+
+function _drawOffice(ctx, W, H) {
+  const floorY = Math.floor(H * 0.6);
+  pxr(ctx, 0, 0, W, floorY, '#D4C5A9');
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0,'#8B7355'); fg.addColorStop(1,'#6B5535');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H-floorY);
   ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 50) { ctx.beginPath(); ctx.moveTo(i,H*0.6); ctx.lineTo(i,H); ctx.stroke(); }
-  drawPixelRect(ctx, 0, H*0.6, W, 6, '#7A6545');
+  for (let xi = 0; xi < W; xi += 50) { ctx.beginPath(); ctx.moveTo(xi,floorY); ctx.lineTo(xi,H); ctx.stroke(); }
+  pxr(ctx, 0, floorY, W, 5, '#7A6545');
 
-  // Two desks with monitors
-  drawDesk(ctx, 60, H * 0.55);
-  drawDesk(ctx, W - 180, H * 0.55);
-  drawChair(ctx, 90, H * 0.55 - 4);
-  drawChair(ctx, W - 150, H * 0.55 - 4);
+  drawWindow(ctx, W/2 - 36, 28);
+  if (W > 300) { drawWindow(ctx, 20, 28); drawWindow(ctx, W-100, 28); }
 
-  drawBookshelf(ctx, W/2 - 30, H * 0.6 - 80);
-  drawWindow(ctx, W/2 - 36, 30);
-  drawWindow(ctx, 30, 30);
-  drawWindow(ctx, W - 110, 30);
+  // Two computer desks
+  _drawComputerDesk(ctx, W * 0.08, floorY - 52);
+  _drawComputerDesk(ctx, W * 0.55, floorY - 52);
+  _drawChair(ctx, W*0.09+8, floorY - 54);
+  _drawChair(ctx, W*0.56+8, floorY - 54);
+  _drawBookshelf(ctx, W/2 - 30, floorY - 100);
+  drawPlant(ctx, W - 56, floorY - 44);
 }
 
-function drawCafe(ctx, W, H) {
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#F9E4C8'); grad.addColorStop(1, '#FDEBD0');
-  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+// ─── CAFÉ ─────────────────────────────────────────────────────────────────────
 
-  drawPixelRect(ctx, 0, 0, W, H * 0.6, '#F5DEB3');
-  const fg = ctx.createLinearGradient(0, H*0.6, 0, H);
-  fg.addColorStop(0, '#C4956A'); fg.addColorStop(1, '#A0784A');
-  ctx.fillStyle = fg; ctx.fillRect(0, H*0.6, W, H*0.4);
+function _drawCafe(ctx, W, H) {
+  const floorY = Math.floor(H * 0.6);
+  pxr(ctx, 0, 0, W, floorY, '#F5DEB3');
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0,'#C4956A'); fg.addColorStop(1,'#A0784A');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H-floorY);
   ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 40) { ctx.beginPath(); ctx.moveTo(i,H*0.6); ctx.lineTo(i,H); ctx.stroke(); }
-  drawPixelRect(ctx, 0, H*0.6, W, 6, '#B8853A');
-
-  // Tables with chairs
-  drawTable(ctx, W/2 - 50, H * 0.55);
-  drawChair(ctx, W/2 - 40, H * 0.55 - 8);
-  drawChair(ctx, W/2 + 20, H * 0.55 - 8);
-  drawTable(ctx, 40, H * 0.55);
-  drawChair(ctx, 50, H * 0.55 - 8);
-
-  drawPlant(ctx, W - 70, H * 0.6 - 36);
-  drawPlant(ctx, 20, H * 0.6 - 36);
-  drawWindow(ctx, W/2 - 36, 30);
-  drawWindow(ctx, 20, 30);
+  for (let xi = 0; xi < W; xi += 40) { ctx.beginPath(); ctx.moveTo(xi,floorY); ctx.lineTo(xi,H); ctx.stroke(); }
+  pxr(ctx, 0, floorY, W, 5, '#B8853A');
+  _drawCafeTable(ctx, W/2-45, floorY-40);
+  _drawChair(ctx, W/2-38, floorY-44);
+  _drawChair(ctx, W/2+16, floorY-44);
+  drawPlant(ctx, W-60, floorY-44);
+  drawPlant(ctx, 10, floorY-44);
+  drawWindow(ctx, W/2-36, 28);
 }
 
-function getSceneList() { return SCENES; }
+function _drawCafeTable(ctx, x, y) {
+  pxr(ctx, x, y, 90, 10, '#C49A6C');
+  pxr(ctx, x+2, y+2, 86, 4, '#D4AA7D');
+  pxr(ctx, x+8, y+10, 8, 30, '#A0785A');
+  pxr(ctx, x+74, y+10, 8, 30, '#A0785A');
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+function getSceneList() {
+  return {
+    home:      { label: 'Home',       emoji: '🏠' },
+    classroom: { label: 'Classroom',  emoji: '📚' },
+    office:    { label: 'Work',       emoji: '💼' },
+    cafe:      { label: 'Café',       emoji: '☕' },
+  };
+}

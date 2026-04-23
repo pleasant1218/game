@@ -13,6 +13,25 @@
 </head>
 <body>
 
+<!-- ─── LOGIN OVERLAY ──────────────────────────────────────── -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-title">Our Little World <span>♥</span></div>
+    <div class="login-subtitle">Who are you?</div>
+    <div id="login-cards"></div>
+    <div id="login-pin-section" style="display:none">
+      <div class="login-pin-label">PIN for <strong id="login-pin-for"></strong></div>
+      <input type="password" id="login-pin-input" class="input-full" placeholder="Enter your PIN"
+             maxlength="4" inputmode="numeric"
+             onkeydown="if(event.key==='Enter') submitLoginPin()">
+      <div class="form-actions" style="margin-top:8px">
+        <button class="btn-cancel" onclick="document.getElementById('login-pin-section').style.display='none'">Back</button>
+        <button class="btn-primary" onclick="submitLoginPin()">Enter ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="app">
 
   <!-- ─── HEADER ─────────────────────────────────────────── -->
@@ -22,6 +41,9 @@
       <div id="tab-bjerg"></div>
       <div id="tab-hungry"></div>
     </div>
+    <button id="logout-btn" onclick="doLogout()" style="display:none">
+      <span class="logout-name"></span> · Log out
+    </button>
   </header>
 
   <!-- ─── MAIN LAYOUT ────────────────────────────────────── -->
@@ -30,7 +52,7 @@
     <!-- Game Canvas -->
     <div id="game-container">
       <canvas id="game-canvas"></canvas>
-      <div class="game-hint">Click anywhere to move your character ✨</div>
+      <div class="game-hint">Drag your character to furniture · Click floor to walk ✨</div>
       <div id="coin-display">🪙 <span id="coin-count">0</span></div>
     </div>
 
@@ -48,47 +70,54 @@
   </div>
 </div>
 
-<!-- Notification toast -->
 <div id="notification"></div>
-
-<!-- Confetti canvas -->
 <canvas id="confetti-canvas"></canvas>
 
-<!-- Scripts -->
 <script src="js/data.js"></script>
 <script src="js/sprites.js"></script>
 <script src="js/scenes.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/game.js"></script>
 <script>
-  window.addEventListener('DOMContentLoaded', () => {
-    // Ensure defaults
-    ['bjerg', 'hungry'].forEach(id => {
-      const p = Data.getPlayer(id);
-      if (!p.ownedOutfits) Data.updatePlayer(id, { ownedOutfits: ['default'] });
-      if (!p.outfit)       Data.updatePlayer(id, { outfit: 'default' });
-      if (!p.status)       Data.updatePlayer(id, { status: 'home' });
-    });
-
-    // Seed demo data on first load
-    const bjerg = Data.getPlayer('bjerg');
-    if (bjerg.goals.length === 0) {
-      Data.addGoal('bjerg', { title: 'Reach 93 kg', current: 97, target: 93, unit: 'kg', isPrivate: false });
-      Data.addTodo('bjerg', 'Go to the gym', false);
-      Data.addTodo('bjerg', 'Drink 2L water today', false);
-      Data.addCustomReward('bjerg', { name: 'Go eat sushi 🍣', price: 800, emoji: '🍣' });
-    }
-    const hungry = Data.getPlayer('hungry');
-    if (hungry.goals.length === 0) {
-      Data.addGoal('hungry', { title: 'Read 12 books this year', current: 3, target: 12, unit: 'books', isPrivate: false });
-      Data.addTodo('hungry', 'Study for exam', false);
-      Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });
-    }
-
-    renderUI();
-    initGame();
-    setupCanvasClick();
+window.addEventListener('DOMContentLoaded', () => {
+  // Ensure defaults
+  ['bjerg', 'hungry'].forEach(id => {
+    const p = Data.getPlayer(id);
+    if (!p.ownedOutfits) Data.updatePlayer(id, { ownedOutfits: ['default'] });
+    if (!p.outfit)       Data.updatePlayer(id, { outfit: 'default' });
+    if (!p.status)       Data.updatePlayer(id, { status: 'home' });
   });
+
+  // Seed demo data on first load
+  const bjerg = Data.getPlayer('bjerg');
+  if (bjerg.goals.length === 0) {
+    Data.addGoal('bjerg', { title: 'Reach 93 kg', current: 97, target: 93, unit: 'kg', isPrivate: false });
+    Data.addTodo('bjerg', 'Go to the gym', false);
+    Data.addTodo('bjerg', 'Drink 2L water today', false);
+    Data.addCustomReward('bjerg', { name: 'Go eat sushi 🍣', price: 800, emoji: '🍣' });
+  }
+  const hungry = Data.getPlayer('hungry');
+  if (hungry.goals.length === 0) {
+    Data.addGoal('hungry', { title: 'Read 12 books this year', current: 3, target: 12, unit: 'books', isPrivate: false });
+    Data.addTodo('hungry', 'Study for exam', false);
+    Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });
+  }
+
+  // Show login or go straight in
+  const loggedIn = Auth.getLoggedIn();
+  if (loggedIn) {
+    activePlayer = loggedIn;
+    document.getElementById('logout-btn').style.display = 'inline-flex';
+    document.getElementById('logout-btn').querySelector('.logout-name').textContent = loggedIn;
+  } else {
+    renderLoginScreen();
+    showLoginScreen();
+  }
+
+  renderUI();
+  initGame();
+  setupCanvasClick();
+});
 </script>
 
 </body>

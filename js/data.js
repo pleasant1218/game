@@ -261,3 +261,28 @@ const Data = {
   getShopItems() { return SHOP_ITEMS; },
   getCoinRewards() { return COIN_REWARDS; }
 };
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+const Auth = {
+  getLoggedIn() {
+    return sessionStorage.getItem('activePlayer'); // 'bjerg' | 'hungry' | null
+  },
+  login(playerId, pin) {
+    const stored = localStorage.getItem(`pin_${playerId}`);
+    if (stored && stored !== String(pin)) return false;
+    sessionStorage.setItem('activePlayer', playerId);
+    return true;
+  },
+  logout() {
+    sessionStorage.removeItem('activePlayer');
+    location.reload();
+  },
+  setPin(playerId, pin) {
+    if (pin) localStorage.setItem(`pin_${playerId}`, String(pin));
+    else     localStorage.removeItem(`pin_${playerId}`);
+  },
+  hasPin(playerId) {
+    return !!localStorage.getItem(`pin_${playerId}`);
+  },
+};

@@ -1,4 +1,4 @@
-// Pixel art sprite renderer for characters
+// Pixel art sprite renderer
 
 const OUTFIT_COLORS = {
   default: { shirt: '#5B9BD5', pants: '#2C3E50' },
@@ -11,153 +11,156 @@ const OUTFIT_COLORS = {
   black:   { shirt: '#2C3E50', pants: '#1A252F' },
 };
 
-// Pixel art: 12 wide x 22 tall, each unit = S pixels on screen
-// Colors: 0=transparent, S=skin, H=hair, E=eye, M=mouth, C=shirt, P=pants, X=shoe, W=white/collar, D=hairDetail
-
-function buildSprite(player, scale = 4) {
-  const skin = player.skin;
-  const hair = player.hairColor;
-  const eye  = player.eyeColor;
+function buildSpriteGrid(player) {
+  const skin   = player.skin;
+  const hair   = player.hairColor;
+  const eye    = player.eyeColor;
   const outfit = OUTFIT_COLORS[player.outfit || 'default'];
   const shirt  = outfit.shirt;
   const pants  = outfit.pants;
   const shoe   = '#3D2B1F';
-  const isLong = player.hairStyle === 'long';
+  const T      = 'transparent';
 
-  // 12x24 pixel grid
-  const T = 'transparent';
-  const grid = [];
-
-  if (isLong) {
-    // Long hair character (hungry)
-    grid.push(
-      [T, T, hair, hair, hair, hair, hair, hair, hair, hair, T, T],      // 0
-      [T, hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T], // 1
+  if (player.hairStyle === 'long') {
+    // hungry — long hair reaching past waist
+    return [
+      [T,    T,    hair, hair, hair, hair, hair, hair, hair, hair, T,    T   ], // 0
+      [T,    hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T   ], // 1
       [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 2
       [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 3
-      [hair, skin, skin, eye, skin, skin, skin, eye, skin, skin, skin, hair],  // 4 eyes
-      [hair, skin, skin, eye, skin, skin, skin, eye, skin, skin, skin, hair],  // 5
+      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 4
+      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 5
       [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 6
       [hair, skin, skin, skin, '#D4896A', skin, skin, '#D4896A', skin, skin, skin, hair], // 7 cheeks
-      [hair, skin, skin, skin, skin, '#8B5E3C', '#8B5E3C', skin, skin, skin, skin, hair], // 8 mouth
+      [hair, skin, skin, skin, skin, '#7B3F00', '#7B3F00', skin, skin, skin, skin, hair], // 8 mouth
       [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 9
-      // body
-      [T, hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair, T], // 10
-      [hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair], // 11
-      [hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair], // 12
-      [hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair], // 13
-      [hair, shirt, shirt, pants, pants, pants, pants, pants, pants, shirt, shirt, hair], // 14
-      // lower
-      [T, hair, pants, pants, pants, pants, pants, pants, pants, pants, hair, T], // 15
-      [T, hair, pants, pants, T, T, T, T, pants, pants, hair, T],  // 16 legs split
-      [T, hair, pants, pants, T, T, T, T, pants, pants, hair, T],  // 17
-      [T, hair, pants, pants, T, T, T, T, pants, pants, hair, T],  // 18
-      [T, T, shoe, shoe, shoe, T, T, shoe, shoe, shoe, T, T],      // 19
-      [T, T, shoe, shoe, shoe, T, T, shoe, shoe, shoe, T, T],      // 20
-    );
+      // body — hair continues down sides
+      [hair, T,    shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T,    hair], // 10
+      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 11
+      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 12
+      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 13
+      [hair, shirt,shirt, pants, pants, pants, pants, pants, pants, shirt, shirt,hair], // 14
+      [hair, T,    pants, pants, pants, pants, pants, pants, pants, pants, T,    hair], // 15
+      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 16
+      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 17
+      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 18
+      [T,    T,    shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  T,    T   ], // 19
+      [T,    T,    shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  T,    T   ], // 20
+    ];
   } else {
-    // Short hair character (bjerg)
-    grid.push(
-      [T, T, hair, hair, hair, hair, hair, hair, hair, hair, T, T],      // 0
-      [T, hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T], // 1
-      [T, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, T], // 2
+    // bjerg — short hair
+    return [
+      [T,    T,    hair, hair, hair, hair, hair, hair, hair, hair, T,    T   ], // 0
+      [T,    hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T   ], // 1
+      [T,    hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, T   ], // 2
       [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 3
-      [hair, skin, skin, eye, skin, skin, skin, eye, skin, skin, skin, hair],  // 4 eyes
-      [hair, skin, skin, eye, skin, skin, skin, eye, skin, skin, skin, hair],  // 5
+      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 4
+      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 5
       [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 6
       [hair, skin, skin, skin, '#FFAA88', skin, skin, '#FFAA88', skin, skin, skin, hair], // 7 cheeks
-      [T, hair, skin, skin, skin, '#8B5E3C', '#8B5E3C', skin, skin, skin, hair, T], // 8 mouth
-      [T, T, hair, hair, skin, skin, skin, skin, hair, hair, T, T], // 9 chin/hairline
-      // body
-      [T, T, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T, T], // 10
-      [T, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T], // 11
-      [T, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T], // 12
-      [T, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T], // 13
-      [T, shirt, shirt, pants, pants, pants, pants, pants, pants, shirt, shirt, T], // 14
-      // lower
-      [T, T, pants, pants, pants, pants, pants, pants, pants, pants, T, T], // 15
-      [T, T, pants, pants, T, T, T, T, pants, pants, T, T],  // 16 legs split
-      [T, T, pants, pants, T, T, T, T, pants, pants, T, T],  // 17
-      [T, T, pants, pants, T, T, T, T, pants, pants, T, T],  // 18
-      [T, T, shoe, shoe, shoe, T, T, shoe, shoe, shoe, T, T], // 19
-      [T, T, shoe, shoe, shoe, T, T, shoe, shoe, shoe, T, T], // 20
-    );
+      [T,    hair, skin, skin, skin, '#7B3F00', '#7B3F00', skin, skin, skin, hair, T  ], // 8 mouth
+      [T,    T,    hair, hair, skin, skin, skin, skin, hair, hair, T,    T   ], // 9
+      [T,    T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T,    T   ], // 10
+      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 11
+      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 12
+      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 13
+      [T,    shirt,shirt,pants,pants,pants,pants,pants,pants,shirt,shirt,T   ], // 14
+      [T,    T,    pants,pants,pants,pants,pants,pants,pants,pants,T,    T   ], // 15
+      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 16
+      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 17
+      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 18
+      [T,    T,    shoe, shoe, shoe, T,    T,    shoe, shoe, shoe, T,    T   ], // 19
+      [T,    T,    shoe, shoe, shoe, T,    T,    shoe, shoe, shoe, T,    T   ], // 20
+    ];
   }
-
-  return { grid, scale, width: 12 * scale, height: 21 * scale };
 }
 
-function drawSprite(ctx, player, x, y, scale = 4, frame = 0, direction = 1) {
-  const { grid } = buildSprite(player, scale);
+// Draw a character with a specific pose
+// pose: 'stand' | 'sit' | 'lie'
+function drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle) {
+  const grid = buildSpriteGrid(player);
 
-  // Walking animation: slight bounce
-  const bounce = Math.sin(frame * 0.3) * scale * 0.5;
-  const yOff = y + bounce;
-
-  ctx.save();
-  if (direction === -1) {
-    ctx.translate(x + 12 * scale, 0);
-    ctx.scale(-1, 1);
-    for (let row = 0; row < grid.length; row++) {
-      for (let col = 0; col < grid[row].length; col++) {
-        const color = grid[row][col];
-        if (color === 'transparent') continue;
-        ctx.fillStyle = color;
-        ctx.fillRect(col * scale - 12 * scale, yOff + row * scale, scale, scale);
-      }
-    }
+  if (pose === 'lie') {
+    _drawLying(ctx, grid, x, y, scale);
+  } else if (pose === 'sit') {
+    _drawSitting(ctx, grid, x, y, scale);
   } else {
-    for (let row = 0; row < grid.length; row++) {
-      for (let col = 0; col < grid[row].length; col++) {
-        const color = grid[row][col];
-        if (color === 'transparent') continue;
-        ctx.fillStyle = color;
-        ctx.fillRect(x + col * scale, yOff + row * scale, scale, scale);
-      }
+    // Standing — bounce only while walking
+    const bounce = isIdle ? 0 : Math.sin(frame * 0.35) * scale * 0.4;
+    _drawGrid(ctx, grid, x, y + bounce, scale);
+  }
+}
+
+function _drawGrid(ctx, grid, x, y, scale) {
+  for (let row = 0; row < grid.length; row++) {
+    for (let col = 0; col < grid[row].length; col++) {
+      const c = grid[row][col];
+      if (c === 'transparent') continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.floor(x + col * scale), Math.floor(y + row * scale), scale, scale);
     }
   }
+}
+
+function _drawSitting(ctx, grid, x, y, scale) {
+  // Show rows 0-13 only (head + torso), clip legs
+  // Shift up slightly so torso sits above furniture seat
+  const yOff = y - 2 * scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x - 1, yOff - 1, 12 * scale + 2, 14 * scale + 2);
+  ctx.clip();
+  _drawGrid(ctx, grid, x, yOff, scale);
   ctx.restore();
 }
 
-function getSpriteSize(scale = 4) {
-  return { width: 12 * scale, height: 21 * scale };
+function _drawLying(ctx, grid, x, y, scale) {
+  // Rotate 90° counter-clockwise around character centre
+  const sw = 12 * scale;
+  const sh = 21 * scale;
+  const cx = x + sw / 2;
+  const cy = y + sh / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-Math.PI / 2);
+  ctx.scale(0.85, 0.85);
+  _drawGrid(ctx, grid, -sw / 2, -sh / 2, scale);
+  ctx.restore();
 }
 
-function drawCharacterWithName(ctx, player, x, y, scale = 4, frame = 0, isActive = false) {
-  const size = getSpriteSize(scale);
+function drawCharacterWithName(ctx, player, x, y, scale, frame, isActive, pose, isIdle) {
+  pose   = pose   || 'stand';
+  isIdle = isIdle !== false;
 
-  // Glow/highlight for active player
+  // Glow for active player
   if (isActive) {
     ctx.save();
     ctx.shadowColor = '#FFD700';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
-    ctx.fillRect(x - 4, y - 4, size.width + 8, size.height + 8);
+    ctx.shadowBlur  = 14;
+    ctx.fillStyle   = 'rgba(255,215,0,0.12)';
+    ctx.fillRect(x - 4, y - 4, 12 * scale + 8, 21 * scale + 8);
     ctx.restore();
   }
 
-  drawSprite(ctx, player, x, y, scale, frame);
+  drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle);
 
   // Name tag
-  const nameX = x + size.width / 2;
-  const nameY = y - 12;
+  const tagX = x + (12 * scale) / 2;
+  const tagY = y - 10;
   ctx.save();
-  ctx.font = `bold ${scale * 2.5}px "Press Start 2P", monospace`;
+  ctx.font      = `bold ${scale * 2.2}px "Press Start 2P", monospace`;
   ctx.textAlign = 'center';
-  const metrics = ctx.measureText(player.displayName);
-  const tagW = metrics.width + 12;
-  const tagH = scale * 3;
-
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  roundRect(ctx, nameX - tagW/2, nameY - tagH + 2, tagW, tagH, 4);
+  const tw  = ctx.measureText(player.displayName).width + 12;
+  const th  = scale * 2.8;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  _roundRect(ctx, tagX - tw / 2, tagY - th + 2, tw, th, 4);
   ctx.fill();
-
   ctx.fillStyle = isActive ? '#FFD700' : '#FFFFFF';
-  ctx.fillText(player.displayName, nameX, nameY);
+  ctx.fillText(player.displayName, tagX, tagY);
   ctx.restore();
 }
 
-function roundRect(ctx, x, y, w, h, r) {
+function _roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.lineTo(x + w - r, y);
@@ -170,3 +173,5 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
 }
+
+function getSpriteSize(scale) { return { w: 12 * scale, h: 21 * scale }; }
