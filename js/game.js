@@ -51,6 +51,7 @@ function resetPositions() {
 
 function _loop() {
   frame++;
+  Data._cache = null; // re-read localStorage each frame so both tabs see live state
   _update();
   _draw();
   requestAnimationFrame(_loop);
@@ -167,8 +168,16 @@ function _placeCharInScene(state, player, pane, H, seatIndex) {
     return;
   }
 
-  // Home — position managed by dragging / wandering / snap
-  if (!state.snapTarget) {
+  // Home — sync pose/snap from Data so both accounts see the same state
+  if (!state.dragging) {
+    state.pose       = player.pose       || 'stand';
+    state.snapTarget = player.snapTarget || null;
+  }
+  if (state.snapTarget) {
+    const snaps = getHomeSnapZones(pW, H);
+    const snap  = snaps.find(s => s.id === state.snapTarget);
+    if (snap) { state.x = snap.x; state.y = snap.y; state.targetX = snap.x; }
+  } else {
     state.y = floorY;
   }
 }
@@ -265,6 +274,7 @@ function _onUp(e) {
       state.y          = snap.y;
       state.snapTarget = snap.id;
       state.pose       = snap.pose;
+      Data.updatePlayer(id, { pose: snap.pose, snapTarget: snap.id });
       return;
     }
   }
@@ -272,6 +282,7 @@ function _onUp(e) {
   state.y          = Math.floor(canvas.height * 0.6) - 21 * SCALE;
   state.snapTarget = null;
   state.pose       = 'stand';
+  Data.updatePlayer(id, { pose: 'stand', snapTarget: null });
 }
 
 // Allow clicking floor to walk (when not dragging)
@@ -304,4 +315,5 @@ function _onClick(e) {
   state.snapTarget = null;
   state.pose       = 'stand';
   state.idleTimer  = 0;
+  Data.updatePlayer(id, { pose: 'stand', snapTarget: null });
 }

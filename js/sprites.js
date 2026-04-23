@@ -22,7 +22,7 @@ function buildSpriteGrid(player) {
   const T      = 'transparent';
 
   if (player.hairStyle === 'long') {
-    // hungry — long hair reaching past waist
+    // hungry — long wavy hair (curly texture via alternating side width)
     return [
       [T,    T,    hair, hair, hair, hair, hair, hair, hair, hair, T,    T   ], // 0
       [T,    hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T   ], // 1
@@ -34,17 +34,17 @@ function buildSpriteGrid(player) {
       [hair, skin, skin, skin, '#D4896A', skin, skin, '#D4896A', skin, skin, skin, hair], // 7 cheeks
       [hair, skin, skin, skin, skin, '#7B3F00', '#7B3F00', skin, skin, skin, skin, hair], // 8 mouth
       [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 9
-      // body — hair continues down sides
-      [hair, T,    shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T,    hair], // 10
-      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 11
-      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 12
-      [hair, shirt,shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt,hair], // 13
-      [hair, shirt,shirt, pants, pants, pants, pants, pants, pants, shirt, shirt,hair], // 14
-      [hair, T,    pants, pants, pants, pants, pants, pants, pants, pants, T,    hair], // 15
-      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 16
-      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 17
-      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 18
-      [T,    T,    shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  T,    T   ], // 19
+      // body — wavy hair: narrow row then wide row alternates to create curl texture
+      [hair, T,    shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T,    hair], // 10 narrow
+      [hair, hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair, hair], // 11 wide
+      [hair, T,    shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T,    hair], // 12 narrow
+      [hair, hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair, hair], // 13 wide
+      [hair, T,    shirt, pants, pants, pants, pants, pants, pants, shirt, T,    hair], // 14 narrow
+      [hair, hair, pants, pants, pants, pants, pants, pants, pants, pants, hair, hair], // 15 wide
+      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 16 narrow
+      [hair, hair, pants, pants, T,    T,    T,    T,    pants, pants, hair, hair], // 17 wide
+      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 18 narrow
+      [T,    hair, shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  hair, T   ], // 19 curl ends
       [T,    T,    shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  T,    T   ], // 20
     ];
   } else {
