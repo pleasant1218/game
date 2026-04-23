@@ -1,6 +1,6 @@
 // Main game loop
+// SCALE is defined in scenes.js (loaded before this file)
 
-const SCALE       = 4;
 const WALK_SPEED  = 1.4;
 const SNAP_RADIUS = 55;
 
