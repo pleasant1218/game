@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our Little World 🌟</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ─── HEADER ─────────────────────────────────────────── -->
+  <header>
+    <div class="logo">Our Little World <span>♥</span></div>
+    <div class="player-tabs">
+      <div id="tab-bjerg"></div>
+      <div id="tab-hungry"></div>
+    </div>
+  </header>
+
+  <!-- ─── MAIN LAYOUT ────────────────────────────────────── -->
+  <div id="main-layout">
+
+    <!-- Game Canvas -->
+    <div id="game-container">
+      <canvas id="game-canvas"></canvas>
+      <div class="game-hint">Click anywhere to move your character ✨</div>
+      <div id="coin-display">🪙 <span id="coin-count">0</span></div>
+    </div>
+
+    <!-- Side Panel -->
+    <div id="side-panel">
+      <nav class="panel-nav">
+        <button class="panel-tab active" data-panel="goals"  onclick="switchPanel('goals')">🎯 Goals</button>
+        <button class="panel-tab"        data-panel="todos"  onclick="switchPanel('todos')">📝 To-Do</button>
+        <button class="panel-tab"        data-panel="shop"   onclick="switchPanel('shop')">🛍 Shop</button>
+        <button class="panel-tab"        data-panel="status" onclick="switchPanel('status')">📍 Status</button>
+      </nav>
+      <div id="panel-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Notification toast -->
+<div id="notification"></div>
+
+<!-- Confetti canvas -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- Scripts -->
+<script src="js/data.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    // Ensure defaults
+    ['bjerg', 'hungry'].forEach(id => {
+      const p = Data.getPlayer(id);
+      if (!p.ownedOutfits) Data.updatePlayer(id, { ownedOutfits: ['default'] });
+      if (!p.outfit)       Data.updatePlayer(id, { outfit: 'default' });
+      if (!p.status)       Data.updatePlayer(id, { status: 'home' });
+    });
+
+    // Seed demo data on first load
+    const bjerg = Data.getPlayer('bjerg');
+    if (bjerg.goals.length === 0) {
+      Data.addGoal('bjerg', { title: 'Reach 93 kg', current: 97, target: 93, unit: 'kg', isPrivate: false });
+      Data.addTodo('bjerg', 'Go to the gym', false);
+      Data.addTodo('bjerg', 'Drink 2L water today', false);
+      Data.addCustomReward('bjerg', { name: 'Go eat sushi 🍣', price: 800, emoji: '🍣' });
+    }
+    const hungry = Data.getPlayer('hungry');
+    if (hungry.goals.length === 0) {
+      Data.addGoal('hungry', { title: 'Read 12 books this year', current: 3, target: 12, unit: 'books', isPrivate: false });
+      Data.addTodo('hungry', 'Study for exam', false);
+      Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });
+    }
+
+    renderUI();
+    initGame();
+    setupCanvasClick();
+  });
+</script>
+
+</body>
+</html>
