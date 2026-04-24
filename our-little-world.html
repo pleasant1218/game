@@ -2596,8 +2596,9 @@ function _placeCharInScene(state, player, pane, H, seatIndex) {
     if (snap) {
       state.x = snap.x; state.y = snap.y; state.targetX = snap.x;
     } else {
-      // Stale snap ID (e.g. after an update) — reset to floor
+      // Stale snap ID (e.g. after an update) — clear from Data once
       state.snapTarget = null; state.pose = 'stand'; state.y = floorY;
+      if (player.snapTarget) Data.updatePlayer(player.id, { pose: 'stand', snapTarget: null });
     }
   } else {
     state.y = floorY;
