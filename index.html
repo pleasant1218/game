@@ -92,16 +92,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!p.status)       Data.updatePlayer(id, { status: 'home' });
   });
 
-  // Seed demo data on first load
+  // Seed demo data only when NOT logged in (offline / demo mode).
+  // Logged-in users always get their real cloud data — never clobber with defaults.
+  const isLoggedIn = !!Auth.getLoggedIn();
   const bjerg = Data.getPlayer('bjerg');
-  if (bjerg.goals.length === 0) {
+  if (!isLoggedIn && bjerg.goals.length === 0) {
     Data.addGoal('bjerg', { title: 'Reach 93 kg', current: 97, target: 93, unit: 'kg', isPrivate: false });
     Data.addTodo('bjerg', 'Go to the gym', false);
     Data.addTodo('bjerg', 'Drink 2L water today', false);
     Data.addCustomReward('bjerg', { name: 'Go eat sushi 🍣', price: 800, emoji: '🍣' });
   }
   const hungry = Data.getPlayer('hungry');
-  if (hungry.goals.length === 0) {
+  if (!isLoggedIn && hungry.goals.length === 0) {
     Data.addGoal('hungry', { title: 'Read 12 books this year', current: 3, target: 12, unit: 'books', isPrivate: false });
     Data.addTodo('hungry', 'Study for exam', false);
     Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });

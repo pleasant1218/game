@@ -50,55 +50,55 @@ function buildSpriteGrid(player) {
   const btH = '#6B4830';            // boot toe highlight
 
   if (player.hairStyle === 'long') {
-    // hungry — long flowing hair, wavy side texture
+    // hungry — voluminous crown, center-parted, wavy flowing sides
     return [
       // ── HEAD ──────────────────────────────────────────────────────────────
-      [T,   T,   hrH, hr,  hr,  hr,  hr,  hr,  hr,  hr,  T,   T  ], // 0  hair top
-      [T,   hrH, hr,  hr,  hr,  hr,  hr,  hr,  hr,  hr,  hr,  T  ], // 1  hair highlight left
-      [hr,  hr,  skH, sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr,  hr ], // 2  forehead
-      [hr,  sk,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  sk,  hr ], // 3  eyebrows
+      [T,   hrH, hr,  hrH, hr,  hr,  hr,  hrH, hr,  hr,  hrH, T  ], // 0  wide poofy crown, multi-highlight
+      [hrH, hr,  hrH, hr,  hr,  hr,  hr,  hr,  hrH, hr,  hr,  hrH], // 1  maximum width — big hair energy
+      [hr,  hr,  hrH, skH, sk,  sk,  sk,  sk,  skH, hrH, hr,  hr ], // 2  inner hair highlight + forehead
+      [hr,  hr,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  hr,  hr ], // 3  oval face (hair frames tightly)
       [hr,  sk,  sk,  eyW, ey,  sk,  sk,  eyW, ey,  sk,  sk,  hr ], // 4  eye whites + iris
       [hr,  sk,  sk,  ey,  eyP, sk,  sk,  ey,  eyP, sk,  sk,  hr ], // 5  iris + pupil
       [hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr ], // 6  mid face
       [hr,  sk,  ck,  sk,  sk,  sk,  sk,  sk,  sk,  ck,  sk,  hr ], // 7  cheeks
       [hr,  sk,  sk,  sk,  sk,  mt,  mt,  sk,  sk,  sk,  sk,  hr ], // 8  mouth
-      [hr,  hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr,  hr ], // 9  chin
-      // ── BODY (hair flows wavy down both sides) ────────────────────────────
-      [hr,  T,   stH, st,  st,  st,  st,  st,  st,  stH, T,   hr ], // 10 collar
-      [hr,  hr,  st,  stH, st,  st,  st,  st,  stH, st,  hr,  hr ], // 11 shirt hi
-      [hr,  T,   stD, st,  st,  st,  st,  st,  st,  stD, T,   hr ], // 12 shirt shadow
-      [hr,  hr,  stD, st,  st,  st,  st,  st,  st,  stD, hr,  hr ], // 13 shirt shadow
-      [hr,  T,   blt, pnD, pn,  pn,  pn,  pn,  pnD, blt, T,   hr ], // 14 belt
-      [hr,  hr,  pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, hr,  hr ], // 15 pants
-      [hr,  T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   hr ], // 16 legs
-      [hr,  hr,  pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, hr,  hr ], // 17 legs
+      [hr,  hr,  hrD, sk,  sk,  sk,  sk,  sk,  sk,  hrD, hr,  hr ], // 9  chin + hair shadow frame
+      // ── BODY — wavy strands, highlight on outer bulge, shadow on inner ───
+      [hrH, T,   stH, st,  st,  st,  st,  st,  st,  stH, T,   hrH], // 10 narrow, crest highlight
+      [hr,  hrD, st,  stH, st,  st,  st,  st,  stH, st,  hrD, hr ], // 11 wide, trough shadow
+      [hrH, T,   stD, st,  st,  st,  st,  st,  st,  stD, T,   hrH], // 12 narrow, crest
+      [hr,  hrD, stD, st,  st,  st,  st,  st,  st,  stD, hrD, hr ], // 13 wide, trough
+      [hrH, T,   blt, pnD, pn,  pn,  pn,  pn,  pnD, blt, T,   hrH], // 14 belt
+      [hr,  hrD, pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, hrD, hr ], // 15 pants
+      [hrH, T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   hrH], // 16 legs
+      [hr,  hrD, pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, hrD, hr ], // 17 legs
       [hrD, T,   bt,  btH, bt,  T,   T,   bt,  btH, bt,  T,   hrD], // 18 boot top
       [T,   hrD, bt,  btH, bt,  bt,  bt,  bt,  btH, bt,  hrD, T  ], // 19 boot toe
       [T,   T,   bt,  bt,  bt,  bt,  bt,  bt,  bt,  bt,  T,   T  ], // 20 boot sole
     ];
   } else {
-    // bjerg — short tidy hair
+    // bjerg — textured short hair, side-swept with small bang
     return [
       // ── HEAD ──────────────────────────────────────────────────────────────
-      [T,   T,   hrH, hr,  hr,  hr,  hr,  hr,  hr,  hr,  T,   T  ], // 0  hair top
-      [T,   hrH, hr,  hr,  hr,  hr,  hr,  hr,  hr,  hr,  hr,  T  ], // 1  highlight left
-      [T,   hr,  skH, sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr,  T  ], // 2  forehead
-      [hr,  hr,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  hr,  hr ], // 3  eyebrows
+      [T,   T,   hrH, hrD, hr,  hrH, hrD, hr,  hrH, hr,  T,   T  ], // 0  textured top (strand detail)
+      [T,   hrH, hr,  hrH, hr,  hr,  hrD, hr,  hrH, hr,  hr,  T  ], // 1  extends left, textured
+      [T,   hr,  hrD, skH, sk,  sk,  sk,  sk,  sk,  sk,  hr,  T  ], // 2  small bang drape + forehead
+      [hr,  hr,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  hr,  hr ], // 3  eyebrows + sideburn frame
       [hr,  sk,  sk,  eyW, ey,  sk,  sk,  eyW, ey,  sk,  sk,  hr ], // 4  eye whites + iris
       [hr,  sk,  sk,  ey,  eyP, sk,  sk,  ey,  eyP, sk,  sk,  hr ], // 5  iris + pupil
       [hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr ], // 6  mid face
       [hr,  sk,  ck,  sk,  sk,  sk,  sk,  sk,  sk,  ck,  sk,  hr ], // 7  cheeks
       [T,   hrD, sk,  sk,  sk,  mt,  mt,  sk,  sk,  sk,  hrD, T  ], // 8  mouth + sideburn
-      [T,   T,   hrD, hrD, sk,  sk,  sk,  sk,  hrD, hrD, T,   T  ], // 9  sideburns / jaw
+      [T,   T,   hrD, hrD, sk,  sk,  sk,  sk,  hrD, hrD, T,   T  ], // 9  tight sideburns / jaw
       // ── BODY ──────────────────────────────────────────────────────────────
       [T,   T,   stH, st,  st,  st,  st,  st,  st,  stH, T,   T  ], // 10 collar
-      [T,   stD, st,  stH, st,  st,  st,  st,  stH, st,  stD, T  ], // 11 shirt hi
+      [T,   stD, st,  stH, st,  st,  st,  st,  stH, st,  stD, T  ], // 11
       [T,   stD, st,  st,  st,  st,  st,  st,  st,  st,  stD, T  ], // 12
       [T,   stD, st,  st,  st,  st,  st,  st,  st,  st,  stD, T  ], // 13
       [T,   blt, pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, blt, T  ], // 14 belt
-      [T,   T,   pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, T,   T  ], // 15 pants
-      [T,   T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   T  ], // 16 legs
-      [T,   T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   T  ], // 17 legs
+      [T,   T,   pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, T,   T  ], // 15
+      [T,   T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   T  ], // 16
+      [T,   T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   T  ], // 17
       [T,   T,   bt,  btH, bt,  T,   T,   bt,  btH, bt,  T,   T  ], // 18 boot top
       [T,   T,   bt,  btH, bt,  bt,  bt,  bt,  btH, bt,  T,   T  ], // 19 boot toe
       [T,   T,   bt,  bt,  bt,  bt,  bt,  bt,  bt,  bt,  T,   T  ], // 20 boot sole
