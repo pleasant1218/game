@@ -89,8 +89,12 @@ async function submitEmailLogin() {
   }
 }
 
-function _finishLogin(id) {
+async function _finishLogin(id) {
   activePlayer = id;
+  // Now that we're authenticated, reload data from Supabase + subscribe to realtime
+  await Data.loadRemote();
+  Data.setupRealtime();
+  updateSyncStatus();
   hideLoginScreen();
   renderUI();
   document.getElementById('logout-btn').style.display = 'inline-flex';
@@ -99,6 +103,23 @@ function _finishLogin(id) {
 
 function doLogout() {
   Auth.signOut();
+}
+
+function updateSyncStatus() {
+  const syncEl = document.getElementById('sync-status');
+  if (!syncEl) return;
+  const base = 'position:absolute;top:12px;right:12px;font-family:"Press Start 2P",monospace;font-size:7px;padding:4px 8px;border-radius:6px;z-index:10;';
+  if (window._supabaseOK) {
+    syncEl.textContent = '☁️ synced';
+    syncEl.title = '';
+    syncEl.style.cssText = base + 'pointer-events:none;color:#4CAF50;background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3)';
+  } else {
+    const errMsg = window._supabaseError || (Auth._isAuthenticated ? 'Unknown Supabase error' : 'Not signed in');
+    syncEl.textContent = '💾 offline';
+    syncEl.title = errMsg;
+    syncEl.style.cssText = base + 'pointer-events:auto;cursor:help;color:#E74C3C;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3)';
+    console.error('[Supabase]', errMsg);
+  }
 }
 
 function showNotification(msg, type = 'coins') {
