@@ -7,10 +7,14 @@ const SCALE = 4; // keep in sync with game.js
 function getHomeSnapZones(paneW, H) {
   const floorY  = Math.floor(H * 0.6);
   const spriteH = 21 * SCALE;
+  const sx      = paneW * 0.36; // sofa left edge (matches _drawSofa)
+  const bx      = paneW * 0.58; // bed left edge  (matches _drawBed)
   return [
-    { id: 'desk', label: '💻',  x: paneW * 0.18, y: floorY - spriteH - 28, pose: 'sit' },
-    { id: 'sofa', label: '🛋️', x: paneW * 0.44, y: floorY - spriteH - 16, pose: 'sit' },
-    { id: 'bed',  label: '🛏️', x: paneW * 0.67, y: floorY - spriteH + 14, pose: 'lie' },
+    { id: 'desk',       x: paneW * 0.18, y: floorY - spriteH - 28, pose: 'sit' },
+    { id: 'sofa-left',  x: sx + 16,      y: floorY - spriteH - 8,  pose: 'sit' },
+    { id: 'sofa-right', x: sx + 60,      y: floorY - spriteH - 8,  pose: 'sit' },
+    { id: 'bed-left',   x: bx + 6,       y: floorY - spriteH + 22, pose: 'lie' },
+    { id: 'bed-right',  x: bx + 74,      y: floorY - spriteH + 22, pose: 'lie' },
   ];
 }
 
