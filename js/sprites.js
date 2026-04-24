@@ -134,9 +134,10 @@ function drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle) {
     _drawLying(ctx, grid, x, y, scale);
   } else if (pose === 'sit') {
     _drawSitting(ctx, grid, x, y, scale);
+  } else if (isIdle) {
+    _drawGrid(ctx, grid, x, y, scale);
   } else {
-    const bounce = isIdle ? 0 : Math.sin(frame * 0.35) * scale * 0.4;
-    _drawGrid(ctx, grid, x, y + bounce, scale);
+    _drawWalking(ctx, grid, x, y, scale, frame);
   }
 }
 
@@ -147,6 +148,33 @@ function _drawGrid(ctx, grid, x, y, scale) {
       if (c === 'transparent') continue;
       ctx.fillStyle = c;
       ctx.fillRect(Math.floor(x + col * scale), Math.floor(y + row * scale), scale, scale);
+    }
+  }
+}
+
+// Walking gait: alternating lower-leg lift (rows 21-23) with a tiny body bob.
+// Left leg spans cols 4-6, right leg cols 7-10 in the sprite grid.
+function _drawWalking(ctx, grid, x, y, scale, frame) {
+  const phase     = frame * 0.28;
+  const leftLift  = Math.max(0, Math.sin(phase))           * scale;
+  const rightLift = Math.max(0, Math.sin(phase + Math.PI)) * scale;
+  const bodyBob   = -Math.abs(Math.sin(phase)) * scale * 0.25;
+  const LEG_TOP_ROW = 21;
+
+  for (let row = 0; row < grid.length; row++) {
+    for (let col = 0; col < grid[row].length; col++) {
+      const c = grid[row][col];
+      if (c === 'transparent') continue;
+      ctx.fillStyle = c;
+      let yOff = bodyBob;
+      if (row >= LEG_TOP_ROW) {
+        yOff -= (col <= 6) ? leftLift : rightLift;
+      }
+      ctx.fillRect(
+        Math.floor(x + col * scale),
+        Math.floor(y + row * scale + yOff),
+        scale, scale
+      );
     }
   }
 }
