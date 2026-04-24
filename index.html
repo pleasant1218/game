@@ -107,29 +107,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });
   }
 
-  // ─── Real-time sync via Supabase ──────────────────────────
-  try {
-    _db.channel('game')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_state' }, payload => {
-        const changedId = payload.new?.id;
-        const loggedIn  = Auth.getLoggedIn();
-        // Only apply the OTHER player's updates — don't clobber local changes
-        if (changedId && changedId !== loggedIn &&
-            payload.new?.data && Data._cache?.players?.[changedId]) {
-          Data._cache.players[changedId] = { ...Data._cache.players[changedId], ...payload.new.data };
-          localStorage.setItem('coupleGame', JSON.stringify(Data._cache));
-          renderUI();
-        }
-      })
-      .subscribe();
-  } catch (e) {
-    console.warn('Realtime subscription failed:', e.message);
-  }
-
   // ─── Show login or go straight in ─────────────────────────
   const loggedIn = Auth.getLoggedIn();
   if (loggedIn) {
     activePlayer = loggedIn;
+    Data.setupRealtime();
     document.getElementById('logout-btn').style.display = 'inline-flex';
     document.getElementById('logout-btn').querySelector('.logout-name').textContent = loggedIn;
   } else {
@@ -140,23 +122,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderUI();
   initGame();
   setupCanvasClick();
+  updateSyncStatus();
 
-  // Show cloud sync status
-  const syncEl = document.getElementById('sync-status');
-  if (syncEl) {
-    if (window._supabaseOK) {
-      syncEl.textContent = '☁️ synced';
-      syncEl.style.cssText += 'color:#4CAF50;background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3)';
-    } else {
-      const errMsg = window._supabaseError || '';
-      syncEl.textContent = '💾 offline';
-      syncEl.title = errMsg; // hover to see error
-      syncEl.style.cssText += 'color:#E74C3C;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);cursor:help';
-      if (errMsg) console.error('[Supabase] Last error:', errMsg);
-    }
-  }
-
-  // Hide loading overlay once everything is ready
   document.getElementById('loading-overlay').style.display = 'none';
 });
 </script>

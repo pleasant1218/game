@@ -140,10 +140,44 @@ const Data = {
 
   _savePlayerRemote(id) {
     clearTimeout(this._saveTimers[id]);
-    this._saveTimers[id] = setTimeout(() => {
+    this._saveTimers[id] = setTimeout(async () => {
       const p = this._cache?.players?.[id];
-      if (p) this._upsertPlayer(id, p);
+      if (!p) return;
+      try {
+        await this._upsertPlayer(id, p);
+        window._supabaseOK = true;
+        if (typeof updateSyncStatus === 'function') updateSyncStatus();
+      } catch (e) {
+        console.warn('[Supabase] save failed:', e.message);
+        window._supabaseError = 'save: ' + e.message;
+        window._supabaseOK = false;
+        if (typeof updateSyncStatus === 'function') updateSyncStatus();
+      }
     }, 500);
+  },
+
+  // Subscribe to real-time changes — idempotent, safe to call multiple times
+  setupRealtime() {
+    if (this._realtimeSubscribed) return;
+    this._realtimeSubscribed = true;
+    try {
+      _db.channel('game')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'game_state' }, payload => {
+          const changedId = payload.new?.id;
+          const loggedIn  = Auth.getLoggedIn();
+          // Only apply the OTHER player's updates — don't clobber local changes
+          if (changedId && changedId !== loggedIn &&
+              payload.new?.data && this._cache?.players?.[changedId]) {
+            this._cache.players[changedId] = { ...this._cache.players[changedId], ...payload.new.data };
+            localStorage.setItem('coupleGame', JSON.stringify(this._cache));
+            if (typeof renderUI === 'function') renderUI();
+          }
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn('[Supabase] realtime subscription failed:', e.message);
+      this._realtimeSubscribed = false;
+    }
   },
 
   // ─── Local (synchronous, used by game loop) ───────────────────────────────
