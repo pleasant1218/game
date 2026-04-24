@@ -900,6 +900,9 @@ header {
 const SUPABASE_URL = 'https://inbkpznkkdntyaggqbcr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluYmtwem5ra2RudHlhZ2dxYmNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODE4NDUsImV4cCI6MjA5MjU1Nzg0NX0.XaCOG_Bp6Aa8IcjeBMnVYxhcCBK4oH0AfqL3-rVQjCc';
 
+// Supabase client — uses authenticated JWT for all API calls
+const _db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const DEFAULT_PLAYERS = {
   bjerg: {
     id: 'bjerg', displayName: 'bjerg',
@@ -953,24 +956,28 @@ const Data = {
   // ─── Remote (Supabase) ───────────────────────────────────────────────────────
 
   async loadRemote() {
-    // ── Step 1: read from Supabase ──────────────────────────────────────────
+    // ── Step 1: restore Supabase auth session ──────────────────────────────
+    const hasSession = await Auth.initialize();
+
+    if (!hasSession) {
+      window._supabaseOK = false;
+      const raw = localStorage.getItem('coupleGame');
+      this._cache = raw
+        ? JSON.parse(raw)
+        : { players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)), sharedMemories: [], version: 1 };
+      return this._cache;
+    }
+
+    // ── Step 2: read from Supabase using authenticated client ──────────────
     let cloud = null;
     try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/game_state?select=id,data`,
-        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
-      );
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`${res.status}: ${body}`);
-      }
-      const rows = await res.json();
+      const { data, error } = await _db.from('game_state').select('id, data');
+      if (error) throw error;
       cloud = {};
-      rows.forEach(r => cloud[r.id] = r.data);
+      data.forEach(r => { cloud[r.id] = r.data; });
     } catch (e) {
       console.warn('[Supabase] read failed:', e.message);
       window._supabaseError = 'read: ' + e.message;
-      // Fallback to localStorage
       const raw = localStorage.getItem('coupleGame');
       this._cache = raw
         ? JSON.parse(raw)
@@ -979,7 +986,7 @@ const Data = {
       return this._cache;
     }
 
-    // ── Step 2: merge cloud + localStorage ─────────────────────────────────
+    // ── Step 3: merge cloud + localStorage ─────────────────────────────────
     const lsRaw = localStorage.getItem('coupleGame');
     const local = lsRaw ? JSON.parse(lsRaw) : null;
     const def   = JSON.parse(JSON.stringify(DEFAULT_PLAYERS));
@@ -988,7 +995,6 @@ const Data = {
       const c = cloud[id] || {};
       const l = local?.players?.[id] || {};
       const base = { ...def[id], ...c };
-      // Fill gaps from localStorage (migration: cloud row exists but was created empty)
       if (!(c.goals?.length)         && l.goals?.length)         base.goals         = l.goals;
       if (!(c.todos?.length)         && l.todos?.length)         base.todos         = l.todos;
       if (!(c.customRewards?.length) && l.customRewards?.length) base.customRewards = l.customRewards;
@@ -996,10 +1002,6 @@ const Data = {
       if (!c.outfit && l.outfit) base.outfit = l.outfit;
       if (!c.ownedOutfits?.length && l.ownedOutfits?.length) base.ownedOutfits = l.ownedOutfits;
       if (!c.furniture?.length   && l.furniture?.length)    base.furniture    = l.furniture;
-      // Migrate legacy localStorage PIN
-      const legacyPin = localStorage.getItem(`pin_${id}`);
-      if (legacyPin) { base.pin = legacyPin; localStorage.removeItem(`pin_${id}`); }
-      else if (!c.pin && l.pin) base.pin = l.pin;
       return base;
     };
 
@@ -1010,7 +1012,7 @@ const Data = {
     };
     localStorage.setItem('coupleGame', JSON.stringify(this._cache));
 
-    // ── Step 3: write merged state back to Supabase ─────────────────────────
+    // ── Step 4: write merged state back to Supabase ─────────────────────────
     try {
       for (const id of ['bjerg', 'hungry']) {
         await this._upsertPlayer(id, this._cache.players[id]);
@@ -1019,27 +1021,18 @@ const Data = {
     } catch (e) {
       console.warn('[Supabase] write failed:', e.message);
       window._supabaseError = 'write: ' + e.message;
-      window._supabaseOK = false; // can read but can't write
+      window._supabaseOK = false;
     }
 
     return this._cache;
   },
 
-  async _upsertPlayer(id, data) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/game_state`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({ id, data, updated_at: new Date().toISOString() }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`upsert ${id}: ${res.status} ${body}`);
-    }
+  async _upsertPlayer(id, playerData) {
+    const { error } = await _db.from('game_state').upsert(
+      { id, data: playerData, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    if (error) throw new Error(`upsert ${id}: ${error.message}`);
   },
 
   _savePlayerRemote(id) {
@@ -1221,32 +1214,42 @@ const Data = {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 const Auth = {
-  getLoggedIn() {
-    return sessionStorage.getItem('activePlayer');
-  },
-  login(playerId, pin) {
-    const player = Data.getPlayer(playerId);
-    // Support both new (player.pin) and legacy (localStorage) PIN storage
-    const stored = player?.pin || localStorage.getItem(`pin_${playerId}`) || null;
-    if (stored && stored !== String(pin)) return false;
-    sessionStorage.setItem('activePlayer', playerId);
-    return true;
-  },
-  logout() {
-    sessionStorage.removeItem('activePlayer');
-    location.reload();
-  },
-  setPin(playerId, pin) {
-    if (pin) {
-      Data.updatePlayer(playerId, { pin: String(pin) });
-    } else {
-      Data.updatePlayer(playerId, { pin: null });
+  _playerId:        null,
+  _isAuthenticated: false,
+
+  // Called once during loadRemote() — restores existing session
+  async initialize() {
+    const { data: { session } } = await _db.auth.getSession();
+    if (session) {
+      this._isAuthenticated = true;
+      this._playerId = session.user.user_metadata?.player_id || null;
     }
-    localStorage.removeItem(`pin_${playerId}`); // clear legacy
+    return !!session;
   },
-  hasPin(playerId) {
-    const player = Data.getPlayer(playerId);
-    return !!(player?.pin || localStorage.getItem(`pin_${playerId}`));
+
+  // Synchronous — safe to call after loadRemote() has resolved
+  getLoggedIn() { return this._playerId; },
+
+  async signIn(email, password) {
+    const { data, error } = await _db.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    this._isAuthenticated = true;
+    this._playerId = data.user.user_metadata?.player_id || null;
+    return { needsPlayerChoice: !this._playerId };
+  },
+
+  // Called once after first login to associate this Supabase account with bjerg/hungry
+  async setPlayer(playerId) {
+    const { error } = await _db.auth.updateUser({ data: { player_id: playerId } });
+    if (error) throw error;
+    this._playerId = playerId;
+  },
+
+  async signOut() {
+    await _db.auth.signOut();
+    this._playerId = null;
+    this._isAuthenticated = false;
+    location.reload();
   },
 };
 
@@ -1848,48 +1851,67 @@ function hideLoginScreen() {
 }
 
 function renderLoginScreen() {
-  const data = Data.load();
-  const players = [data.players.bjerg, data.players.hungry];
+  const container = document.getElementById('login-cards');
 
-  document.getElementById('login-cards').innerHTML = players.map(p => `
-    <div class="login-card" onclick="selectLoginPlayer('${p.id}')">
-      <div class="login-avatar" style="background:${p.skin};border-color:${p.hairColor}">
-        <div class="login-hair" style="background:${p.hairColor};height:${p.hairStyle==='long'?'60%':'40%'}"></div>
-        <div class="login-eyes">
-          <div style="background:${p.eyeColor}"></div>
-          <div style="background:${p.eyeColor}"></div>
+  // Authenticated via Supabase but player not chosen yet → show character picker
+  if (Auth._isAuthenticated && !Auth._playerId) {
+    const data = Data.load();
+    container.innerHTML = ['bjerg', 'hungry'].map(id => {
+      const p = data.players[id];
+      return `<div class="login-card" onclick="selectLoginPlayer('${id}')">
+        <div class="login-avatar" style="background:${p.skin};border-color:${p.hairColor}">
+          <div class="login-hair" style="background:${p.hairColor};height:${p.hairStyle==='long'?'60%':'40%'}"></div>
+          <div class="login-eyes">
+            <div style="background:${p.eyeColor}"></div>
+            <div style="background:${p.eyeColor}"></div>
+          </div>
         </div>
+        <div class="login-name">${p.displayName}</div>
+        <div class="login-coins">🪙 ${p.coins}</div>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  // Not authenticated → show email + password form
+  container.innerHTML = `
+    <div class="login-email-form">
+      <input type="email" id="login-email" class="input-full" placeholder="Email address"
+             onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      <input type="password" id="login-password" class="input-full" placeholder="Password"
+             style="margin-top:8px"
+             onkeydown="if(event.key==='Enter')submitEmailLogin()">
+      <div id="login-error" style="color:#E74C3C;font-size:8px;min-height:16px;margin-top:6px;text-align:center"></div>
+      <div class="form-actions" style="margin-top:8px;justify-content:center">
+        <button class="btn-primary" onclick="submitEmailLogin()">Sign In ▶</button>
       </div>
-      <div class="login-name">${p.displayName}</div>
-      <div class="login-coins">🪙 ${p.coins}</div>
-      ${Auth.hasPin(p.id) ? '<div class="login-has-pin">🔒 PIN set</div>' : ''}
-    </div>
-  `).join('');
+    </div>`;
 }
 
-let _pendingLoginId = null;
-
-function selectLoginPlayer(id) {
-  if (Auth.hasPin(id)) {
-    _pendingLoginId = id;
-    document.getElementById('login-pin-section').style.display = 'block';
-    document.getElementById('login-pin-for').textContent = id;
-    document.getElementById('login-pin-input').value = '';
-    document.getElementById('login-pin-input').focus();
-  } else {
-    Auth.login(id, null);
+async function selectLoginPlayer(id) {
+  try {
+    await Auth.setPlayer(id);
     _finishLogin(id);
+  } catch (e) {
+    showNotification('Error: ' + e.message, 'warn');
   }
 }
 
-function submitLoginPin() {
-  const pin = document.getElementById('login-pin-input').value.trim();
-  if (Auth.login(_pendingLoginId, pin)) {
-    _finishLogin(_pendingLoginId);
-  } else {
-    document.getElementById('login-pin-input').classList.add('shake');
-    setTimeout(() => document.getElementById('login-pin-input').classList.remove('shake'), 500);
-    showNotification('Wrong PIN! Try again 🔒', 'warn');
+async function submitEmailLogin() {
+  const email    = document.getElementById('login-email')?.value.trim();
+  const password = document.getElementById('login-password')?.value;
+  const errEl    = document.getElementById('login-error');
+  if (!email || !password) { if (errEl) errEl.textContent = 'Enter email and password'; return; }
+  if (errEl) errEl.textContent = 'Signing in…';
+  try {
+    const result = await Auth.signIn(email, password);
+    if (result.needsPlayerChoice) {
+      renderLoginScreen(); // show character picker
+    } else {
+      _finishLogin(Auth.getLoggedIn());
+    }
+  } catch (e) {
+    if (errEl) errEl.textContent = e.message;
   }
 }
 
@@ -1897,13 +1919,12 @@ function _finishLogin(id) {
   activePlayer = id;
   hideLoginScreen();
   renderUI();
-  // Update logout button
   document.getElementById('logout-btn').style.display = 'inline-flex';
   document.getElementById('logout-btn').querySelector('.logout-name').textContent = id;
 }
 
 function doLogout() {
-  Auth.logout(); // reloads page
+  Auth.signOut();
 }
 
 function showNotification(msg, type = 'coins') {
@@ -2399,17 +2420,7 @@ function renderStatusPanel() {
     </div>
   </div>
 
-  <div class="panel-section">
-    <div class="section-header"><span>🔒 PIN Lock</span></div>
-    <div class="coins-hint">Set a PIN so only you can control your character.</div>
-    <div class="pin-form">
-      <input type="password" id="pin-input" placeholder="New PIN (4 digits)" class="input-full" maxlength="4" inputmode="numeric">
-      <div class="form-actions">
-        <button class="btn-cancel" onclick="clearPin()">Remove PIN</button>
-        <button class="btn-primary" onclick="savePin()">Save PIN</button>
-      </div>
-    </div>
-  </div>`;
+  `;
 
   return html;
 }
@@ -2418,20 +2429,6 @@ function setStatus(statusId) {
   Data.setStatus(getActivePlayer(), statusId);
   renderUI();
   window.gameNeedsRedraw = true;
-}
-
-function savePin() {
-  const pin = document.getElementById('pin-input')?.value.trim();
-  if (!pin || pin.length < 4) { showNotification('Enter a 4-digit PIN ⚠️', 'warn'); return; }
-  Auth.setPin(getActivePlayer(), pin);
-  showNotification('PIN saved! 🔒', 'info');
-  renderUI();
-}
-
-function clearPin() {
-  Auth.setPin(getActivePlayer(), null);
-  showNotification('PIN removed', 'info');
-  renderUI();
 }
 
 // ─── CELEBRATION ─────────────────────────────────────────────────────────────
@@ -2838,9 +2835,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // ─── Real-time sync via Supabase ──────────────────────────
   try {
-    const { createClient } = window.supabase;
-    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
-    db.channel('game')
+    _db.channel('game')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_state' }, payload => {
         const changedId = payload.new?.id;
         const loggedIn  = Auth.getLoggedIn();
@@ -2854,7 +2849,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       })
       .subscribe();
   } catch (e) {
-    console.warn('Realtime subscription failed (offline?):', e.message);
+    console.warn('Realtime subscription failed:', e.message);
   }
 
   // ─── Show login or go straight in ─────────────────────────

@@ -25,48 +25,67 @@ function hideLoginScreen() {
 }
 
 function renderLoginScreen() {
-  const data = Data.load();
-  const players = [data.players.bjerg, data.players.hungry];
+  const container = document.getElementById('login-cards');
 
-  document.getElementById('login-cards').innerHTML = players.map(p => `
-    <div class="login-card" onclick="selectLoginPlayer('${p.id}')">
-      <div class="login-avatar" style="background:${p.skin};border-color:${p.hairColor}">
-        <div class="login-hair" style="background:${p.hairColor};height:${p.hairStyle==='long'?'60%':'40%'}"></div>
-        <div class="login-eyes">
-          <div style="background:${p.eyeColor}"></div>
-          <div style="background:${p.eyeColor}"></div>
+  // Authenticated via Supabase but player not chosen yet → show character picker
+  if (Auth._isAuthenticated && !Auth._playerId) {
+    const data = Data.load();
+    container.innerHTML = ['bjerg', 'hungry'].map(id => {
+      const p = data.players[id];
+      return `<div class="login-card" onclick="selectLoginPlayer('${id}')">
+        <div class="login-avatar" style="background:${p.skin};border-color:${p.hairColor}">
+          <div class="login-hair" style="background:${p.hairColor};height:${p.hairStyle==='long'?'60%':'40%'}"></div>
+          <div class="login-eyes">
+            <div style="background:${p.eyeColor}"></div>
+            <div style="background:${p.eyeColor}"></div>
+          </div>
         </div>
+        <div class="login-name">${p.displayName}</div>
+        <div class="login-coins">🪙 ${p.coins}</div>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  // Not authenticated → show email + password form
+  container.innerHTML = `
+    <div class="login-email-form">
+      <input type="email" id="login-email" class="input-full" placeholder="Email address"
+             onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      <input type="password" id="login-password" class="input-full" placeholder="Password"
+             style="margin-top:8px"
+             onkeydown="if(event.key==='Enter')submitEmailLogin()">
+      <div id="login-error" style="color:#E74C3C;font-size:8px;min-height:16px;margin-top:6px;text-align:center"></div>
+      <div class="form-actions" style="margin-top:8px;justify-content:center">
+        <button class="btn-primary" onclick="submitEmailLogin()">Sign In ▶</button>
       </div>
-      <div class="login-name">${p.displayName}</div>
-      <div class="login-coins">🪙 ${p.coins}</div>
-      ${Auth.hasPin(p.id) ? '<div class="login-has-pin">🔒 PIN set</div>' : ''}
-    </div>
-  `).join('');
+    </div>`;
 }
 
-let _pendingLoginId = null;
-
-function selectLoginPlayer(id) {
-  if (Auth.hasPin(id)) {
-    _pendingLoginId = id;
-    document.getElementById('login-pin-section').style.display = 'block';
-    document.getElementById('login-pin-for').textContent = id;
-    document.getElementById('login-pin-input').value = '';
-    document.getElementById('login-pin-input').focus();
-  } else {
-    Auth.login(id, null);
+async function selectLoginPlayer(id) {
+  try {
+    await Auth.setPlayer(id);
     _finishLogin(id);
+  } catch (e) {
+    showNotification('Error: ' + e.message, 'warn');
   }
 }
 
-function submitLoginPin() {
-  const pin = document.getElementById('login-pin-input').value.trim();
-  if (Auth.login(_pendingLoginId, pin)) {
-    _finishLogin(_pendingLoginId);
-  } else {
-    document.getElementById('login-pin-input').classList.add('shake');
-    setTimeout(() => document.getElementById('login-pin-input').classList.remove('shake'), 500);
-    showNotification('Wrong PIN! Try again 🔒', 'warn');
+async function submitEmailLogin() {
+  const email    = document.getElementById('login-email')?.value.trim();
+  const password = document.getElementById('login-password')?.value;
+  const errEl    = document.getElementById('login-error');
+  if (!email || !password) { if (errEl) errEl.textContent = 'Enter email and password'; return; }
+  if (errEl) errEl.textContent = 'Signing in…';
+  try {
+    const result = await Auth.signIn(email, password);
+    if (result.needsPlayerChoice) {
+      renderLoginScreen(); // show character picker
+    } else {
+      _finishLogin(Auth.getLoggedIn());
+    }
+  } catch (e) {
+    if (errEl) errEl.textContent = e.message;
   }
 }
 
@@ -74,13 +93,12 @@ function _finishLogin(id) {
   activePlayer = id;
   hideLoginScreen();
   renderUI();
-  // Update logout button
   document.getElementById('logout-btn').style.display = 'inline-flex';
   document.getElementById('logout-btn').querySelector('.logout-name').textContent = id;
 }
 
 function doLogout() {
-  Auth.logout(); // reloads page
+  Auth.signOut();
 }
 
 function showNotification(msg, type = 'coins') {
@@ -576,17 +594,7 @@ function renderStatusPanel() {
     </div>
   </div>
 
-  <div class="panel-section">
-    <div class="section-header"><span>🔒 PIN Lock</span></div>
-    <div class="coins-hint">Set a PIN so only you can control your character.</div>
-    <div class="pin-form">
-      <input type="password" id="pin-input" placeholder="New PIN (4 digits)" class="input-full" maxlength="4" inputmode="numeric">
-      <div class="form-actions">
-        <button class="btn-cancel" onclick="clearPin()">Remove PIN</button>
-        <button class="btn-primary" onclick="savePin()">Save PIN</button>
-      </div>
-    </div>
-  </div>`;
+  `;
 
   return html;
 }
@@ -595,20 +603,6 @@ function setStatus(statusId) {
   Data.setStatus(getActivePlayer(), statusId);
   renderUI();
   window.gameNeedsRedraw = true;
-}
-
-function savePin() {
-  const pin = document.getElementById('pin-input')?.value.trim();
-  if (!pin || pin.length < 4) { showNotification('Enter a 4-digit PIN ⚠️', 'warn'); return; }
-  Auth.setPin(getActivePlayer(), pin);
-  showNotification('PIN saved! 🔒', 'info');
-  renderUI();
-}
-
-function clearPin() {
-  Auth.setPin(getActivePlayer(), null);
-  showNotification('PIN removed', 'info');
-  renderUI();
 }
 
 // ─── CELEBRATION ─────────────────────────────────────────────────────────────
