@@ -953,62 +953,75 @@ const Data = {
   // ─── Remote (Supabase) ───────────────────────────────────────────────────────
 
   async loadRemote() {
+    // ── Step 1: read from Supabase ──────────────────────────────────────────
+    let cloud = null;
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/game_state?id=in.(bjerg,hungry)&select=id,data`,
+        `${SUPABASE_URL}/rest/v1/game_state?select=id,data`,
         { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
       );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rows  = await res.json();
-      const cloud = {};
-      rows.forEach(r => cloud[r.id] = r.data);
-
-      // Also read localStorage so we can migrate old data to Supabase
-      const lsRaw = localStorage.getItem('coupleGame');
-      const local = lsRaw ? JSON.parse(lsRaw) : null;
-      const def   = JSON.parse(JSON.stringify(DEFAULT_PLAYERS));
-
-      const merge = (id) => {
-        const c = cloud[id] || {};
-        const l = local?.players?.[id] || {};
-        // Start from defaults, then cloud, then fill gaps from localStorage
-        const base = { ...def[id], ...c };
-        // If cloud row has no goals/todos but local does — prefer local (migration scenario)
-        if (!(c.goals?.length)         && l.goals?.length)         base.goals         = l.goals;
-        if (!(c.todos?.length)         && l.todos?.length)         base.todos         = l.todos;
-        if (!(c.customRewards?.length) && l.customRewards?.length) base.customRewards = l.customRewards;
-        if (!c.coins && l.coins)  base.coins  = l.coins;
-        if (!c.outfit && l.outfit) base.outfit = l.outfit;
-        if (!c.ownedOutfits?.length && l.ownedOutfits?.length) base.ownedOutfits = l.ownedOutfits;
-        if (!c.furniture?.length && l.furniture?.length) base.furniture = l.furniture;
-        // Always migrate legacy localStorage PIN (takes priority during first migration)
-        const legacyPin = localStorage.getItem(`pin_${id}`);
-        if (legacyPin) { base.pin = legacyPin; localStorage.removeItem(`pin_${id}`); }
-        else if (!c.pin && l.pin) base.pin = l.pin;
-        return base;
-      };
-
-      this._cache = {
-        players: { bjerg: merge('bjerg'), hungry: merge('hungry') },
-        sharedMemories: [],
-        version: 1,
-      };
-
-      // Always upload merged state to Supabase (creates row if missing, updates if existing)
-      for (const id of ['bjerg', 'hungry']) {
-        await this._upsertPlayer(id, this._cache.players[id]);
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`${res.status}: ${body}`);
       }
-
-      localStorage.setItem('coupleGame', JSON.stringify(this._cache));
-      window._supabaseOK = true;
+      const rows = await res.json();
+      cloud = {};
+      rows.forEach(r => cloud[r.id] = r.data);
     } catch (e) {
-      console.warn('Supabase load failed, falling back to localStorage:', e.message);
-      window._supabaseOK = false;
+      console.warn('[Supabase] read failed:', e.message);
+      window._supabaseError = 'read: ' + e.message;
+      // Fallback to localStorage
       const raw = localStorage.getItem('coupleGame');
       this._cache = raw
         ? JSON.parse(raw)
         : { players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)), sharedMemories: [], version: 1 };
+      window._supabaseOK = false;
+      return this._cache;
     }
+
+    // ── Step 2: merge cloud + localStorage ─────────────────────────────────
+    const lsRaw = localStorage.getItem('coupleGame');
+    const local = lsRaw ? JSON.parse(lsRaw) : null;
+    const def   = JSON.parse(JSON.stringify(DEFAULT_PLAYERS));
+
+    const merge = (id) => {
+      const c = cloud[id] || {};
+      const l = local?.players?.[id] || {};
+      const base = { ...def[id], ...c };
+      // Fill gaps from localStorage (migration: cloud row exists but was created empty)
+      if (!(c.goals?.length)         && l.goals?.length)         base.goals         = l.goals;
+      if (!(c.todos?.length)         && l.todos?.length)         base.todos         = l.todos;
+      if (!(c.customRewards?.length) && l.customRewards?.length) base.customRewards = l.customRewards;
+      if (!c.coins  && l.coins)  base.coins  = l.coins;
+      if (!c.outfit && l.outfit) base.outfit = l.outfit;
+      if (!c.ownedOutfits?.length && l.ownedOutfits?.length) base.ownedOutfits = l.ownedOutfits;
+      if (!c.furniture?.length   && l.furniture?.length)    base.furniture    = l.furniture;
+      // Migrate legacy localStorage PIN
+      const legacyPin = localStorage.getItem(`pin_${id}`);
+      if (legacyPin) { base.pin = legacyPin; localStorage.removeItem(`pin_${id}`); }
+      else if (!c.pin && l.pin) base.pin = l.pin;
+      return base;
+    };
+
+    this._cache = {
+      players: { bjerg: merge('bjerg'), hungry: merge('hungry') },
+      sharedMemories: [],
+      version: 1,
+    };
+    localStorage.setItem('coupleGame', JSON.stringify(this._cache));
+
+    // ── Step 3: write merged state back to Supabase ─────────────────────────
+    try {
+      for (const id of ['bjerg', 'hungry']) {
+        await this._upsertPlayer(id, this._cache.players[id]);
+      }
+      window._supabaseOK = true;
+    } catch (e) {
+      console.warn('[Supabase] write failed:', e.message);
+      window._supabaseError = 'write: ' + e.message;
+      window._supabaseOK = false; // can read but can't write
+    }
+
     return this._cache;
   },
 
@@ -2866,8 +2879,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       syncEl.textContent = '☁️ synced';
       syncEl.style.cssText += 'color:#4CAF50;background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3)';
     } else {
+      const errMsg = window._supabaseError || '';
       syncEl.textContent = '💾 offline';
-      syncEl.style.cssText += 'color:#888;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)';
+      syncEl.title = errMsg; // hover to see error
+      syncEl.style.cssText += 'color:#E74C3C;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);cursor:help';
+      if (errMsg) console.error('[Supabase] Last error:', errMsg);
     }
   }
 

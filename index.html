@@ -160,8 +160,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       syncEl.textContent = '☁️ synced';
       syncEl.style.cssText += 'color:#4CAF50;background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3)';
     } else {
+      const errMsg = window._supabaseError || '';
       syncEl.textContent = '💾 offline';
-      syncEl.style.cssText += 'color:#888;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)';
+      syncEl.title = errMsg; // hover to see error
+      syncEl.style.cssText += 'color:#E74C3C;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);cursor:help';
+      if (errMsg) console.error('[Supabase] Last error:', errMsg);
     }
   }
 
