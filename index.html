@@ -26,18 +26,8 @@
 <div id="login-overlay" style="display:none">
   <div class="login-box">
     <div class="login-title">Our Little World <span>♥</span></div>
-    <div class="login-subtitle">Who are you?</div>
+    <div class="login-subtitle">Sign in to play</div>
     <div id="login-cards"></div>
-    <div id="login-pin-section" style="display:none">
-      <div class="login-pin-label">PIN for <strong id="login-pin-for"></strong></div>
-      <input type="password" id="login-pin-input" class="input-full" placeholder="Enter your PIN"
-             maxlength="4" inputmode="numeric"
-             onkeydown="if(event.key==='Enter') submitLoginPin()">
-      <div class="form-actions" style="margin-top:8px">
-        <button class="btn-cancel" onclick="document.getElementById('login-pin-section').style.display='none'">Back</button>
-        <button class="btn-primary" onclick="submitLoginPin()">Enter ▶</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -119,9 +109,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // ─── Real-time sync via Supabase ──────────────────────────
   try {
-    const { createClient } = window.supabase;
-    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
-    db.channel('game')
+    _db.channel('game')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_state' }, payload => {
         const changedId = payload.new?.id;
         const loggedIn  = Auth.getLoggedIn();
@@ -135,7 +123,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       })
       .subscribe();
   } catch (e) {
-    console.warn('Realtime subscription failed (offline?):', e.message);
+    console.warn('Realtime subscription failed:', e.message);
   }
 
   // ─── Show login or go straight in ─────────────────────────

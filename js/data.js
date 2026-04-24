@@ -3,6 +3,9 @@
 const SUPABASE_URL = 'https://inbkpznkkdntyaggqbcr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluYmtwem5ra2RudHlhZ2dxYmNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODE4NDUsImV4cCI6MjA5MjU1Nzg0NX0.XaCOG_Bp6Aa8IcjeBMnVYxhcCBK4oH0AfqL3-rVQjCc';
 
+// Supabase client — uses authenticated JWT for all API calls
+const _db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const DEFAULT_PLAYERS = {
   bjerg: {
     id: 'bjerg', displayName: 'bjerg',
@@ -56,24 +59,28 @@ const Data = {
   // ─── Remote (Supabase) ───────────────────────────────────────────────────────
 
   async loadRemote() {
-    // ── Step 1: read from Supabase ──────────────────────────────────────────
+    // ── Step 1: restore Supabase auth session ──────────────────────────────
+    const hasSession = await Auth.initialize();
+
+    if (!hasSession) {
+      window._supabaseOK = false;
+      const raw = localStorage.getItem('coupleGame');
+      this._cache = raw
+        ? JSON.parse(raw)
+        : { players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)), sharedMemories: [], version: 1 };
+      return this._cache;
+    }
+
+    // ── Step 2: read from Supabase using authenticated client ──────────────
     let cloud = null;
     try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/game_state?select=id,data`,
-        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
-      );
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`${res.status}: ${body}`);
-      }
-      const rows = await res.json();
+      const { data, error } = await _db.from('game_state').select('id, data');
+      if (error) throw error;
       cloud = {};
-      rows.forEach(r => cloud[r.id] = r.data);
+      data.forEach(r => { cloud[r.id] = r.data; });
     } catch (e) {
       console.warn('[Supabase] read failed:', e.message);
       window._supabaseError = 'read: ' + e.message;
-      // Fallback to localStorage
       const raw = localStorage.getItem('coupleGame');
       this._cache = raw
         ? JSON.parse(raw)
@@ -82,7 +89,7 @@ const Data = {
       return this._cache;
     }
 
-    // ── Step 2: merge cloud + localStorage ─────────────────────────────────
+    // ── Step 3: merge cloud + localStorage ─────────────────────────────────
     const lsRaw = localStorage.getItem('coupleGame');
     const local = lsRaw ? JSON.parse(lsRaw) : null;
     const def   = JSON.parse(JSON.stringify(DEFAULT_PLAYERS));
@@ -91,7 +98,6 @@ const Data = {
       const c = cloud[id] || {};
       const l = local?.players?.[id] || {};
       const base = { ...def[id], ...c };
-      // Fill gaps from localStorage (migration: cloud row exists but was created empty)
       if (!(c.goals?.length)         && l.goals?.length)         base.goals         = l.goals;
       if (!(c.todos?.length)         && l.todos?.length)         base.todos         = l.todos;
       if (!(c.customRewards?.length) && l.customRewards?.length) base.customRewards = l.customRewards;
@@ -99,10 +105,6 @@ const Data = {
       if (!c.outfit && l.outfit) base.outfit = l.outfit;
       if (!c.ownedOutfits?.length && l.ownedOutfits?.length) base.ownedOutfits = l.ownedOutfits;
       if (!c.furniture?.length   && l.furniture?.length)    base.furniture    = l.furniture;
-      // Migrate legacy localStorage PIN
-      const legacyPin = localStorage.getItem(`pin_${id}`);
-      if (legacyPin) { base.pin = legacyPin; localStorage.removeItem(`pin_${id}`); }
-      else if (!c.pin && l.pin) base.pin = l.pin;
       return base;
     };
 
@@ -113,7 +115,7 @@ const Data = {
     };
     localStorage.setItem('coupleGame', JSON.stringify(this._cache));
 
-    // ── Step 3: write merged state back to Supabase ─────────────────────────
+    // ── Step 4: write merged state back to Supabase ─────────────────────────
     try {
       for (const id of ['bjerg', 'hungry']) {
         await this._upsertPlayer(id, this._cache.players[id]);
@@ -122,27 +124,18 @@ const Data = {
     } catch (e) {
       console.warn('[Supabase] write failed:', e.message);
       window._supabaseError = 'write: ' + e.message;
-      window._supabaseOK = false; // can read but can't write
+      window._supabaseOK = false;
     }
 
     return this._cache;
   },
 
-  async _upsertPlayer(id, data) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/game_state`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({ id, data, updated_at: new Date().toISOString() }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`upsert ${id}: ${res.status} ${body}`);
-    }
+  async _upsertPlayer(id, playerData) {
+    const { error } = await _db.from('game_state').upsert(
+      { id, data: playerData, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    if (error) throw new Error(`upsert ${id}: ${error.message}`);
   },
 
   _savePlayerRemote(id) {
@@ -324,31 +317,41 @@ const Data = {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 const Auth = {
-  getLoggedIn() {
-    return sessionStorage.getItem('activePlayer');
-  },
-  login(playerId, pin) {
-    const player = Data.getPlayer(playerId);
-    // Support both new (player.pin) and legacy (localStorage) PIN storage
-    const stored = player?.pin || localStorage.getItem(`pin_${playerId}`) || null;
-    if (stored && stored !== String(pin)) return false;
-    sessionStorage.setItem('activePlayer', playerId);
-    return true;
-  },
-  logout() {
-    sessionStorage.removeItem('activePlayer');
-    location.reload();
-  },
-  setPin(playerId, pin) {
-    if (pin) {
-      Data.updatePlayer(playerId, { pin: String(pin) });
-    } else {
-      Data.updatePlayer(playerId, { pin: null });
+  _playerId:        null,
+  _isAuthenticated: false,
+
+  // Called once during loadRemote() — restores existing session
+  async initialize() {
+    const { data: { session } } = await _db.auth.getSession();
+    if (session) {
+      this._isAuthenticated = true;
+      this._playerId = session.user.user_metadata?.player_id || null;
     }
-    localStorage.removeItem(`pin_${playerId}`); // clear legacy
+    return !!session;
   },
-  hasPin(playerId) {
-    const player = Data.getPlayer(playerId);
-    return !!(player?.pin || localStorage.getItem(`pin_${playerId}`));
+
+  // Synchronous — safe to call after loadRemote() has resolved
+  getLoggedIn() { return this._playerId; },
+
+  async signIn(email, password) {
+    const { data, error } = await _db.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    this._isAuthenticated = true;
+    this._playerId = data.user.user_metadata?.player_id || null;
+    return { needsPlayerChoice: !this._playerId };
+  },
+
+  // Called once after first login to associate this Supabase account with bjerg/hungry
+  async setPlayer(playerId) {
+    const { error } = await _db.auth.updateUser({ data: { player_id: playerId } });
+    if (error) throw error;
+    this._playerId = playerId;
+  },
+
+  async signOut() {
+    await _db.auth.signOut();
+    this._playerId = null;
+    this._isAuthenticated = false;
+    location.reload();
   },
 };
