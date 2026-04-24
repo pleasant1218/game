@@ -893,96 +893,143 @@ header {
 <canvas id="confetti-canvas"></canvas>
 
 <script>
-// Data layer - localStorage persistence
+// Data layer — Supabase cloud storage + localStorage fallback
+
+const SUPABASE_URL = 'https://inbkpznkkdntyaggqbcr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluYmtwem5ra2RudHlhZ2dxYmNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODE4NDUsImV4cCI6MjA5MjU1Nzg0NX0.XaCOG_Bp6Aa8IcjeBMnVYxhcCBK4oH0AfqL3-rVQjCc';
 
 const DEFAULT_PLAYERS = {
   bjerg: {
-    id: 'bjerg',
-    displayName: 'bjerg',
-    skin: '#FFDAB9',
-    hairColor: '#8B5E3C',
-    hairStyle: 'short',
-    eyeColor: '#4A90D9',
-    coins: 0,
-    outfit: 'default',
-    furniture: [],
-    status: 'home',
-    pose: 'stand',
-    snapTarget: null,
-    goals: [],
-    todos: [],
-    customRewards: [],
-    achievements: [],
+    id: 'bjerg', displayName: 'bjerg',
+    skin: '#FFDAB9', hairColor: '#8B5E3C', hairStyle: 'short', eyeColor: '#4A90D9',
+    coins: 0, outfit: 'default', ownedOutfits: ['default'], furniture: [],
+    status: 'home', pose: 'stand', snapTarget: null, pin: null,
+    goals: [], todos: [], customRewards: [], achievements: [],
     createdAt: Date.now()
   },
   hungry: {
-    id: 'hungry',
-    displayName: 'hungry',
-    skin: '#F0C89A',
-    hairColor: '#1C1C1C',
-    hairStyle: 'long',
-    eyeColor: '#6B3D2A',
-    coins: 0,
-    outfit: 'default',
-    furniture: [],
-    status: 'home',
-    pose: 'stand',
-    snapTarget: null,
-    goals: [],
-    todos: [],
-    customRewards: [],
-    achievements: [],
+    id: 'hungry', displayName: 'hungry',
+    skin: '#F0C89A', hairColor: '#1C1C1C', hairStyle: 'long', eyeColor: '#6B3D2A',
+    coins: 0, outfit: 'default', ownedOutfits: ['default'], furniture: [],
+    status: 'home', pose: 'stand', snapTarget: null, pin: null,
+    goals: [], todos: [], customRewards: [], achievements: [],
     createdAt: Date.now()
   }
 };
 
 const SHOP_ITEMS = {
   outfits: [
-    { id: 'default',    name: 'Default',      price: 0,    color: null,    preview: 'default' },
-    { id: 'red',        name: 'Red Dress',    price: 150,  color: '#E74C3C', preview: 'dress' },
-    { id: 'blue',       name: 'Blue Suit',    price: 150,  color: '#2980B9', preview: 'suit' },
-    { id: 'green',      name: 'Green Hoodie', price: 120,  color: '#27AE60', preview: 'hoodie' },
-    { id: 'purple',     name: 'Purple Robe',  price: 200,  color: '#8E44AD', preview: 'robe' },
-    { id: 'yellow',     name: 'Yellow Jacket',price: 180,  color: '#F1C40F', preview: 'jacket' },
-    { id: 'pink',       name: 'Pink Sweater', price: 160,  color: '#E91E8C', preview: 'sweater' },
-    { id: 'black',      name: 'Black Outfit', price: 220,  color: '#2C3E50', preview: 'black' },
+    { id: 'default',    name: 'Default',       price: 0,    color: null      },
+    { id: 'red',        name: 'Red Dress',     price: 150,  color: '#E74C3C' },
+    { id: 'blue',       name: 'Blue Suit',     price: 150,  color: '#2980B9' },
+    { id: 'green',      name: 'Green Hoodie',  price: 120,  color: '#27AE60' },
+    { id: 'purple',     name: 'Purple Robe',   price: 200,  color: '#8E44AD' },
+    { id: 'yellow',     name: 'Yellow Jacket', price: 180,  color: '#F1C40F' },
+    { id: 'pink',       name: 'Pink Sweater',  price: 160,  color: '#E91E8C' },
+    { id: 'black',      name: 'Black Outfit',  price: 220,  color: '#2C3E50' },
   ],
   furniture: [
-    { id: 'plant',      name: 'Cute Plant',   price: 80,   emoji: '🌱' },
-    { id: 'lamp',       name: 'Cozy Lamp',    price: 100,  emoji: '🪔' },
-    { id: 'bookshelf',  name: 'Bookshelf',    price: 150,  emoji: '📚' },
-    { id: 'cat',        name: 'Pet Cat',      price: 300,  emoji: '🐱' },
-    { id: 'flowers',    name: 'Flower Vase',  price: 90,   emoji: '🌸' },
-    { id: 'music',      name: 'Music Box',    price: 200,  emoji: '🎵' },
+    { id: 'plant',     name: 'Cute Plant',   price: 80,  emoji: '🌱' },
+    { id: 'lamp',      name: 'Cozy Lamp',    price: 100, emoji: '🪔' },
+    { id: 'bookshelf', name: 'Bookshelf',    price: 150, emoji: '📚' },
+    { id: 'cat',       name: 'Pet Cat',      price: 300, emoji: '🐱' },
+    { id: 'flowers',   name: 'Flower Vase',  price: 90,  emoji: '🌸' },
+    { id: 'music',     name: 'Music Box',    price: 200, emoji: '🎵' },
   ]
 };
 
 const COIN_REWARDS = {
   todoComplete: 10,
-  goalMilestone25: 50,
-  goalMilestone50: 100,
-  goalMilestone75: 150,
-  goalComplete: 500,
-  streak7: 100,
-  streak30: 500,
+  goalMilestone25: 50, goalMilestone50: 100, goalMilestone75: 150,
+  goalComplete: 500, streak7: 100, streak30: 500,
 };
 
 const Data = {
   _cache: null,
+  _saveTimers: {},
+
+  // ─── Remote (Supabase) ───────────────────────────────────────────────────────
+
+  async loadRemote() {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/game_state?id=in.(bjerg,hungry)&select=id,data`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rows = await res.json();
+      const map  = {};
+      rows.forEach(r => map[r.id] = r.data);
+
+      const def = JSON.parse(JSON.stringify(DEFAULT_PLAYERS));
+      this._cache = {
+        players: {
+          bjerg:  { ...def.bjerg,  ...(map.bjerg  || {}) },
+          hungry: { ...def.hungry, ...(map.hungry || {}) },
+        },
+        sharedMemories: [],
+        version: 1,
+      };
+
+      // Migrate legacy localStorage PINs into player data
+      for (const id of ['bjerg', 'hungry']) {
+        const lp = localStorage.getItem(`pin_${id}`);
+        if (lp && !this._cache.players[id].pin) {
+          this._cache.players[id].pin = lp;
+          localStorage.removeItem(`pin_${id}`);
+          this._savePlayerRemote(id);
+        }
+      }
+
+      // Create rows that don't exist yet
+      for (const id of ['bjerg', 'hungry']) {
+        if (!map[id]) await this._upsertPlayer(id, this._cache.players[id]);
+      }
+
+      localStorage.setItem('coupleGame', JSON.stringify(this._cache));
+    } catch (e) {
+      console.warn('Supabase load failed, falling back to localStorage:', e.message);
+      const raw = localStorage.getItem('coupleGame');
+      this._cache = raw
+        ? JSON.parse(raw)
+        : { players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)), sharedMemories: [], version: 1 };
+    }
+    return this._cache;
+  },
+
+  async _upsertPlayer(id, data) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/game_state`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({ id, data, updated_at: new Date().toISOString() }),
+      });
+    } catch (e) {
+      console.warn(`Supabase save failed for ${id}:`, e.message);
+    }
+  },
+
+  _savePlayerRemote(id) {
+    clearTimeout(this._saveTimers[id]);
+    this._saveTimers[id] = setTimeout(() => {
+      const p = this._cache?.players?.[id];
+      if (p) this._upsertPlayer(id, p);
+    }, 500);
+  },
+
+  // ─── Local (synchronous, used by game loop) ───────────────────────────────
 
   load() {
     if (this._cache) return this._cache;
     const raw = localStorage.getItem('coupleGame');
-    if (raw) {
-      this._cache = JSON.parse(raw);
-    } else {
-      this._cache = {
-        players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)),
-        sharedMemories: [],
-        version: 1
-      };
-      this.save();
-    }
+    this._cache = raw
+      ? JSON.parse(raw)
+      : { players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)), sharedMemories: [], version: 1 };
     return this._cache;
   },
 
@@ -999,26 +1046,24 @@ const Data = {
     data.players[id] = { ...data.players[id], ...updates };
     this._cache = data;
     this.save();
+    this._savePlayerRemote(id); // async cloud save, debounced
     return data.players[id];
   },
+
+  // ─── Goals ───────────────────────────────────────────────────────────────────
 
   addGoal(playerId, goal) {
     const player = this.getPlayer(playerId);
     const newGoal = {
       id: Date.now().toString(),
-      title: goal.title,
-      description: goal.description || '',
-      type: goal.type || 'number',
-      target: goal.target,
-      current: goal.current || 0,
-      unit: goal.unit || '',
+      title: goal.title, description: goal.description || '',
+      type: goal.type || 'number', target: goal.target,
+      current: goal.current || 0, unit: goal.unit || '',
       isPrivate: goal.isPrivate || false,
       milestones: { 25: false, 50: false, 75: false, 100: false },
-      createdAt: Date.now(),
-      completedAt: null
+      createdAt: Date.now(), completedAt: null
     };
-    const goals = [...player.goals, newGoal];
-    this.updatePlayer(playerId, { goals });
+    this.updatePlayer(playerId, { goals: [...player.goals, newGoal] });
     return newGoal;
   },
 
@@ -1029,10 +1074,9 @@ const Data = {
       const updated = { ...g, current: newValue };
       const pct = Math.min(100, (newValue / g.target) * 100);
       let coinsEarned = 0;
-
-      if (pct >= 25 && !g.milestones[25]) { updated.milestones = { ...g.milestones, 25: true }; coinsEarned += COIN_REWARDS.goalMilestone25; }
-      if (pct >= 50 && !g.milestones[50]) { updated.milestones = { ...updated.milestones, 50: true }; coinsEarned += COIN_REWARDS.goalMilestone50; }
-      if (pct >= 75 && !g.milestones[75]) { updated.milestones = { ...updated.milestones, 75: true }; coinsEarned += COIN_REWARDS.goalMilestone75; }
+      if (pct >= 25  && !g.milestones[25])  { updated.milestones = { ...g.milestones, 25: true };           coinsEarned += COIN_REWARDS.goalMilestone25; }
+      if (pct >= 50  && !g.milestones[50])  { updated.milestones = { ...updated.milestones, 50: true };     coinsEarned += COIN_REWARDS.goalMilestone50; }
+      if (pct >= 75  && !g.milestones[75])  { updated.milestones = { ...updated.milestones, 75: true };     coinsEarned += COIN_REWARDS.goalMilestone75; }
       if (pct >= 100 && !g.milestones[100]) {
         updated.milestones = { ...updated.milestones, 100: true };
         updated.completedAt = Date.now();
@@ -1040,13 +1084,11 @@ const Data = {
       }
       return { goal: updated, coinsEarned };
     });
-
     let totalCoins = 0;
     const cleanGoals = goals.map(item => {
       if (item.coinsEarned !== undefined) { totalCoins += item.coinsEarned; return item.goal; }
       return item;
     });
-
     this.updatePlayer(playerId, { goals: cleanGoals, coins: player.coins + totalCoins });
     return totalCoins;
   },
@@ -1055,6 +1097,8 @@ const Data = {
     const player = this.getPlayer(playerId);
     this.updatePlayer(playerId, { goals: player.goals.filter(g => g.id !== goalId) });
   },
+
+  // ─── Todos ───────────────────────────────────────────────────────────────────
 
   addTodo(playerId, text, isPrivate = false) {
     const player = this.getPlayer(playerId);
@@ -1077,16 +1121,14 @@ const Data = {
     this.updatePlayer(playerId, { todos: player.todos.filter(t => t.id !== todoId) });
   },
 
+  // ─── Shop ────────────────────────────────────────────────────────────────────
+
   addCustomReward(playerId, reward) {
     const player = this.getPlayer(playerId);
     const newReward = {
-      id: Date.now().toString(),
-      name: reward.name,
-      price: reward.price,
-      isCouple: reward.isCouple || false,
-      emoji: reward.emoji || '🎁',
-      redeemed: false,
-      createdBy: playerId
+      id: Date.now().toString(), name: reward.name, price: reward.price,
+      isCouple: reward.isCouple || false, emoji: reward.emoji || '🎁',
+      redeemed: false, createdBy: playerId
     };
     this.updatePlayer(playerId, { customRewards: [...player.customRewards, newReward] });
     return newReward;
@@ -1096,17 +1138,13 @@ const Data = {
     const player = this.getPlayer(playerId);
     const reward = player.customRewards.find(r => r.id === rewardId);
     if (!reward || player.coins < reward.price) return false;
-
     const customRewards = player.customRewards.map(r =>
       r.id === rewardId ? { ...r, redeemed: true, redeemedAt: Date.now() } : r
     );
     this.updatePlayer(playerId, { customRewards, coins: player.coins - reward.price });
-
     const data = this.load();
     data.sharedMemories.push({
-      id: Date.now().toString(),
-      type: 'reward',
-      playerId,
+      id: Date.now().toString(), type: 'reward', playerId,
       text: `${player.displayName} redeemed "${reward.name}"! 🎉`,
       timestamp: Date.now()
     });
@@ -1121,10 +1159,7 @@ const Data = {
     if (!item || player.coins < item.price) return false;
     const owned = player.ownedOutfits || ['default'];
     if (owned.includes(outfitId)) return false;
-    this.updatePlayer(playerId, {
-      coins: player.coins - item.price,
-      ownedOutfits: [...owned, outfitId]
-    });
+    this.updatePlayer(playerId, { coins: player.coins - item.price, ownedOutfits: [...owned, outfitId] });
     return true;
   },
 
@@ -1141,34 +1176,30 @@ const Data = {
     const item = SHOP_ITEMS.furniture.find(i => i.id === furnitureId);
     if (!item || player.coins < item.price) return false;
     if (player.furniture.includes(furnitureId)) return false;
-    this.updatePlayer(playerId, {
-      coins: player.coins - item.price,
-      furniture: [...player.furniture, furnitureId]
-    });
+    this.updatePlayer(playerId, { coins: player.coins - item.price, furniture: [...player.furniture, furnitureId] });
     return true;
   },
 
-  setStatus(playerId, status) {
-    this.updatePlayer(playerId, { status });
-  },
-
+  setStatus(playerId, status) { this.updatePlayer(playerId, { status }); },
   addCoins(playerId, amount) {
     const player = this.getPlayer(playerId);
     this.updatePlayer(playerId, { coins: player.coins + amount });
   },
 
-  getShopItems() { return SHOP_ITEMS; },
-  getCoinRewards() { return COIN_REWARDS; }
+  getShopItems()   { return SHOP_ITEMS; },
+  getCoinRewards() { return COIN_REWARDS; },
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 const Auth = {
   getLoggedIn() {
-    return sessionStorage.getItem('activePlayer'); // 'bjerg' | 'hungry' | null
+    return sessionStorage.getItem('activePlayer');
   },
   login(playerId, pin) {
-    const stored = localStorage.getItem(`pin_${playerId}`);
+    const player = Data.getPlayer(playerId);
+    // Support both new (player.pin) and legacy (localStorage) PIN storage
+    const stored = player?.pin || localStorage.getItem(`pin_${playerId}`) || null;
     if (stored && stored !== String(pin)) return false;
     sessionStorage.setItem('activePlayer', playerId);
     return true;
@@ -1178,11 +1209,16 @@ const Auth = {
     location.reload();
   },
   setPin(playerId, pin) {
-    if (pin) localStorage.setItem(`pin_${playerId}`, String(pin));
-    else     localStorage.removeItem(`pin_${playerId}`);
+    if (pin) {
+      Data.updatePlayer(playerId, { pin: String(pin) });
+    } else {
+      Data.updatePlayer(playerId, { pin: null });
+    }
+    localStorage.removeItem(`pin_${playerId}`); // clear legacy
   },
   hasPin(playerId) {
-    return !!localStorage.getItem(`pin_${playerId}`);
+    const player = Data.getPlayer(playerId);
+    return !!(player?.pin || localStorage.getItem(`pin_${playerId}`));
   },
 };
 
@@ -2468,7 +2504,6 @@ function resetPositions() {
 
 function _loop() {
   frame++;
-  Data._cache = null; // re-read localStorage each frame so both tabs see live state
   _update();
   _draw();
   requestAnimationFrame(_loop);
@@ -2746,8 +2781,11 @@ function _onClick(e) {
 
 </script>
 <script>
-window.addEventListener('DOMContentLoaded', () => {
-  // Ensure defaults
+window.addEventListener('DOMContentLoaded', async () => {
+  // Load data from Supabase (falls back to localStorage if offline)
+  await Data.loadRemote();
+
+  // Ensure defaults for saves missing new fields
   ['bjerg', 'hungry'].forEach(id => {
     const p = Data.getPlayer(id);
     if (!p.ownedOutfits) Data.updatePlayer(id, { ownedOutfits: ['default'] });
@@ -2770,7 +2808,28 @@ window.addEventListener('DOMContentLoaded', () => {
     Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });
   }
 
-  // Show login or go straight in
+  // ─── Real-time sync via Supabase ──────────────────────────
+  try {
+    const { createClient } = window.supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+    db.channel('game')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_state' }, payload => {
+        const changedId = payload.new?.id;
+        const loggedIn  = Auth.getLoggedIn();
+        // Only apply the OTHER player's updates — don't clobber local changes
+        if (changedId && changedId !== loggedIn &&
+            payload.new?.data && Data._cache?.players?.[changedId]) {
+          Data._cache.players[changedId] = { ...Data._cache.players[changedId], ...payload.new.data };
+          localStorage.setItem('coupleGame', JSON.stringify(Data._cache));
+          renderUI();
+        }
+      })
+      .subscribe();
+  } catch (e) {
+    console.warn('Realtime subscription failed (offline?):', e.message);
+  }
+
+  // ─── Show login or go straight in ─────────────────────────
   const loggedIn = Auth.getLoggedIn();
   if (loggedIn) {
     activePlayer = loggedIn;
@@ -2778,12 +2837,15 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logout-btn').querySelector('.logout-name').textContent = loggedIn;
   } else {
     renderLoginScreen();
-    showLoginScreen();
+    document.getElementById('login-overlay').style.display = 'flex';
   }
 
   renderUI();
   initGame();
   setupCanvasClick();
+
+  // Hide loading overlay once everything is ready
+  document.getElementById('loading-overlay').style.display = 'none';
 });
 </script>
 
