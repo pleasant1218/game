@@ -51,7 +51,6 @@ function resetPositions() {
 
 function _loop() {
   frame++;
-  Data._cache = null; // re-read localStorage each frame so both tabs see live state
   _update();
   _draw();
   requestAnimationFrame(_loop);
