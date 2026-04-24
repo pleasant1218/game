@@ -59,6 +59,9 @@ const Data = {
   // ─── Remote (Supabase) ───────────────────────────────────────────────────────
 
   async loadRemote() {
+    // Always reset so index.html can check it after this call
+    this._cloudHadRow = { bjerg: false, hungry: false };
+
     // ── Step 1: restore Supabase auth session ──────────────────────────────
     const hasSession = await Auth.initialize();
 
@@ -78,6 +81,8 @@ const Data = {
       if (error) throw error;
       cloud = {};
       data.forEach(r => { cloud[r.id] = r.data; });
+      this._cloudHadRow = { bjerg: !!cloud['bjerg'], hungry: !!cloud['hungry'] };
+      window._supabaseOK = true;
     } catch (e) {
       console.warn('[Supabase] read failed:', e.message);
       window._supabaseError = 'read: ' + e.message;
@@ -94,18 +99,17 @@ const Data = {
     const local = lsRaw ? JSON.parse(lsRaw) : null;
     const def   = JSON.parse(JSON.stringify(DEFAULT_PLAYERS));
 
+    // Cloud wins when it has a row; fall back to local when cloud is empty.
+    // If both exist, the one with the newer _savedAt timestamp wins.
     const merge = (id) => {
-      const c = cloud[id] || {};
-      const l = local?.players?.[id] || {};
-      const base = { ...def[id], ...c };
-      if (!(c.goals?.length)         && l.goals?.length)         base.goals         = l.goals;
-      if (!(c.todos?.length)         && l.todos?.length)         base.todos         = l.todos;
-      if (!(c.customRewards?.length) && l.customRewards?.length) base.customRewards = l.customRewards;
-      if (!c.coins  && l.coins)  base.coins  = l.coins;
-      if (!c.outfit && l.outfit) base.outfit = l.outfit;
-      if (!c.ownedOutfits?.length && l.ownedOutfits?.length) base.ownedOutfits = l.ownedOutfits;
-      if (!c.furniture?.length   && l.furniture?.length)    base.furniture    = l.furniture;
-      return base;
+      const c = cloud[id] || null;
+      const l = local?.players?.[id] || null;
+      if (!c && !l) return { ...def[id] };
+      if (!c)       return { ...def[id], ...l };
+      if (!l)       return { ...def[id], ...c };
+      const cloudTime = c._savedAt || 0;
+      const localTime = l._savedAt || 0;
+      return cloudTime >= localTime ? { ...def[id], ...c } : { ...def[id], ...l };
     };
 
     this._cache = {
@@ -115,14 +119,25 @@ const Data = {
     };
     localStorage.setItem('coupleGame', JSON.stringify(this._cache));
 
-    // ── Step 4: write merged state back to Supabase ─────────────────────────
+    // ── Step 4: only push rows that don't exist in cloud yet ───────────────
+    // NEVER overwrite an existing cloud row here — trust Supabase as the
+    // source of truth.  Individual updatePlayer() calls handle incremental saves.
     try {
       for (const id of ['bjerg', 'hungry']) {
-        await this._upsertPlayer(id, this._cache.players[id]);
+        if (!cloud[id]) {
+          // Only push if local had real user data (not just app defaults)
+          const lp = local?.players?.[id];
+          const hasRealData = lp && (
+            lp.goals?.length || lp.todos?.length || lp.coins ||
+            lp.customRewards?.length || lp.furniture?.length
+          );
+          if (hasRealData) {
+            await this._upsertPlayer(id, this._cache.players[id]);
+          }
+        }
       }
-      window._supabaseOK = true;
     } catch (e) {
-      console.warn('[Supabase] write failed:', e.message);
+      console.warn('[Supabase] init write failed:', e.message);
       window._supabaseError = 'write: ' + e.message;
       window._supabaseOK = false;
     }
@@ -201,7 +216,7 @@ const Data = {
 
   updatePlayer(id, updates) {
     const data = this.load();
-    data.players[id] = { ...data.players[id], ...updates };
+    data.players[id] = { ...data.players[id], ...updates, _savedAt: Date.now() };
     this._cache = data;
     this.save();
     this._savePlayerRemote(id); // async cloud save, debounced
