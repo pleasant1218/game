@@ -1289,7 +1289,7 @@ const Auth = {
 
 </script>
 <script>
-// Pixel art sprite renderer
+// Pixel art sprite renderer — Stardew Valley inspired style
 
 const OUTFIT_COLORS = {
   default: { shirt: '#5B9BD5', pants: '#2C3E50' },
@@ -1302,81 +1302,109 @@ const OUTFIT_COLORS = {
   black:   { shirt: '#2C3E50', pants: '#1A252F' },
 };
 
+function _dk(hex, amt) {
+  if (!hex || hex === 'transparent') return hex;
+  const r = Math.max(0, parseInt(hex.slice(1,3),16) - amt);
+  const g = Math.max(0, parseInt(hex.slice(3,5),16) - amt);
+  const b = Math.max(0, parseInt(hex.slice(5,7),16) - amt);
+  return '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+function _lt(hex, amt) {
+  if (!hex || hex === 'transparent') return hex;
+  const r = Math.min(255, parseInt(hex.slice(1,3),16) + amt);
+  const g = Math.min(255, parseInt(hex.slice(3,5),16) + amt);
+  const b = Math.min(255, parseInt(hex.slice(5,7),16) + amt);
+  return '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
 function buildSpriteGrid(player) {
-  const skin   = player.skin;
-  const hair   = player.hairColor;
-  const eye    = player.eyeColor;
+  const T   = 'transparent';
+  const sk  = player.skin;
+  const skH = _lt(sk, 30);          // forehead highlight
+  const hr  = player.hairColor;
+  const hrH = _lt(hr, 50);          // hair highlight
+  const hrD = _dk(hr, 35);          // hair shadow / sideburns
   const outfit = OUTFIT_COLORS[player.outfit || 'default'];
-  const shirt  = outfit.shirt;
-  const pants  = outfit.pants;
-  const shoe   = '#3D2B1F';
-  const T      = 'transparent';
+  const st  = outfit.shirt;
+  const stH = _lt(st, 32);          // shirt highlight (center)
+  const stD = _dk(st, 42);          // shirt shadow (sides)
+  const pn  = outfit.pants;
+  const pnD = _dk(pn, 42);          // pants shadow (sides)
+  const blt = _dk(pn, 70);          // belt
+  const ey  = player.eyeColor;
+  const eyW = '#F2EAEA';            // warm eye white
+  const eyP = _dk(ey, 55);          // pupil
+  const brow = _dk(hr, 10);         // eyebrow (slightly darker hair)
+  const ck  = '#F09878';            // cheek blush
+  const mt  = '#9A5038';            // mouth
+  const bt  = '#3D2B1F';            // boot
+  const btH = '#6B4830';            // boot toe highlight
 
   if (player.hairStyle === 'long') {
-    // hungry — long wavy hair (curly texture via alternating side width)
+    // hungry — long flowing hair, wavy side texture
     return [
-      [T,    T,    hair, hair, hair, hair, hair, hair, hair, hair, T,    T   ], // 0
-      [T,    hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T   ], // 1
-      [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 2
-      [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 3
-      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 4
-      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 5
-      [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 6
-      [hair, skin, skin, skin, '#D4896A', skin, skin, '#D4896A', skin, skin, skin, hair], // 7 cheeks
-      [hair, skin, skin, skin, skin, '#7B3F00', '#7B3F00', skin, skin, skin, skin, hair], // 8 mouth
-      [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 9
-      // body — wavy hair: narrow row then wide row alternates to create curl texture
-      [hair, T,    shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T,    hair], // 10 narrow
-      [hair, hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair, hair], // 11 wide
-      [hair, T,    shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, T,    hair], // 12 narrow
-      [hair, hair, shirt, shirt, shirt, shirt, shirt, shirt, shirt, shirt, hair, hair], // 13 wide
-      [hair, T,    shirt, pants, pants, pants, pants, pants, pants, shirt, T,    hair], // 14 narrow
-      [hair, hair, pants, pants, pants, pants, pants, pants, pants, pants, hair, hair], // 15 wide
-      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 16 narrow
-      [hair, hair, pants, pants, T,    T,    T,    T,    pants, pants, hair, hair], // 17 wide
-      [hair, T,    pants, pants, T,    T,    T,    T,    pants, pants, T,    hair], // 18 narrow
-      [T,    hair, shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  hair, T   ], // 19 curl ends
-      [T,    T,    shoe,  shoe,  shoe,  T,    T,    shoe,  shoe,  shoe,  T,    T   ], // 20
+      // ── HEAD ──────────────────────────────────────────────────────────────
+      [T,   T,   hrH, hr,  hr,  hr,  hr,  hr,  hr,  hr,  T,   T  ], // 0  hair top
+      [T,   hrH, hr,  hr,  hr,  hr,  hr,  hr,  hr,  hr,  hr,  T  ], // 1  hair highlight left
+      [hr,  hr,  skH, sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr,  hr ], // 2  forehead
+      [hr,  sk,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  sk,  hr ], // 3  eyebrows
+      [hr,  sk,  sk,  eyW, ey,  sk,  sk,  eyW, ey,  sk,  sk,  hr ], // 4  eye whites + iris
+      [hr,  sk,  sk,  ey,  eyP, sk,  sk,  ey,  eyP, sk,  sk,  hr ], // 5  iris + pupil
+      [hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr ], // 6  mid face
+      [hr,  sk,  ck,  sk,  sk,  sk,  sk,  sk,  sk,  ck,  sk,  hr ], // 7  cheeks
+      [hr,  sk,  sk,  sk,  sk,  mt,  mt,  sk,  sk,  sk,  sk,  hr ], // 8  mouth
+      [hr,  hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr,  hr ], // 9  chin
+      // ── BODY (hair flows wavy down both sides) ────────────────────────────
+      [hr,  T,   stH, st,  st,  st,  st,  st,  st,  stH, T,   hr ], // 10 collar
+      [hr,  hr,  st,  stH, st,  st,  st,  st,  stH, st,  hr,  hr ], // 11 shirt hi
+      [hr,  T,   stD, st,  st,  st,  st,  st,  st,  stD, T,   hr ], // 12 shirt shadow
+      [hr,  hr,  stD, st,  st,  st,  st,  st,  st,  stD, hr,  hr ], // 13 shirt shadow
+      [hr,  T,   blt, pnD, pn,  pn,  pn,  pn,  pnD, blt, T,   hr ], // 14 belt
+      [hr,  hr,  pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, hr,  hr ], // 15 pants
+      [hr,  T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   hr ], // 16 legs
+      [hr,  hr,  pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, hr,  hr ], // 17 legs
+      [hrD, T,   bt,  btH, bt,  T,   T,   bt,  btH, bt,  T,   hrD], // 18 boot top
+      [T,   hrD, bt,  btH, bt,  bt,  bt,  bt,  btH, bt,  hrD, T  ], // 19 boot toe
+      [T,   T,   bt,  bt,  bt,  bt,  bt,  bt,  bt,  bt,  T,   T  ], // 20 boot sole
     ];
   } else {
-    // bjerg — short hair
+    // bjerg — short tidy hair
     return [
-      [T,    T,    hair, hair, hair, hair, hair, hair, hair, hair, T,    T   ], // 0
-      [T,    hair, hair, hair, hair, hair, hair, hair, hair, hair, hair, T   ], // 1
-      [T,    hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, T   ], // 2
-      [hair, hair, skin, skin, skin, skin, skin, skin, skin, skin, hair, hair], // 3
-      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 4
-      [hair, skin, skin, eye,  skin, skin, skin, eye,  skin, skin, skin, hair], // 5
-      [hair, skin, skin, skin, skin, skin, skin, skin, skin, skin, skin, hair], // 6
-      [hair, skin, skin, skin, '#FFAA88', skin, skin, '#FFAA88', skin, skin, skin, hair], // 7 cheeks
-      [T,    hair, skin, skin, skin, '#7B3F00', '#7B3F00', skin, skin, skin, hair, T  ], // 8 mouth
-      [T,    T,    hair, hair, skin, skin, skin, skin, hair, hair, T,    T   ], // 9
-      [T,    T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T,    T   ], // 10
-      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 11
-      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 12
-      [T,    shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,shirt,T   ], // 13
-      [T,    shirt,shirt,pants,pants,pants,pants,pants,pants,shirt,shirt,T   ], // 14
-      [T,    T,    pants,pants,pants,pants,pants,pants,pants,pants,T,    T   ], // 15
-      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 16
-      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 17
-      [T,    T,    pants,pants,T,    T,    T,    T,    pants,pants,T,    T   ], // 18
-      [T,    T,    shoe, shoe, shoe, T,    T,    shoe, shoe, shoe, T,    T   ], // 19
-      [T,    T,    shoe, shoe, shoe, T,    T,    shoe, shoe, shoe, T,    T   ], // 20
+      // ── HEAD ──────────────────────────────────────────────────────────────
+      [T,   T,   hrH, hr,  hr,  hr,  hr,  hr,  hr,  hr,  T,   T  ], // 0  hair top
+      [T,   hrH, hr,  hr,  hr,  hr,  hr,  hr,  hr,  hr,  hr,  T  ], // 1  highlight left
+      [T,   hr,  skH, sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr,  T  ], // 2  forehead
+      [hr,  hr,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  hr,  hr ], // 3  eyebrows
+      [hr,  sk,  sk,  eyW, ey,  sk,  sk,  eyW, ey,  sk,  sk,  hr ], // 4  eye whites + iris
+      [hr,  sk,  sk,  ey,  eyP, sk,  sk,  ey,  eyP, sk,  sk,  hr ], // 5  iris + pupil
+      [hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr ], // 6  mid face
+      [hr,  sk,  ck,  sk,  sk,  sk,  sk,  sk,  sk,  ck,  sk,  hr ], // 7  cheeks
+      [T,   hrD, sk,  sk,  sk,  mt,  mt,  sk,  sk,  sk,  hrD, T  ], // 8  mouth + sideburn
+      [T,   T,   hrD, hrD, sk,  sk,  sk,  sk,  hrD, hrD, T,   T  ], // 9  sideburns / jaw
+      // ── BODY ──────────────────────────────────────────────────────────────
+      [T,   T,   stH, st,  st,  st,  st,  st,  st,  stH, T,   T  ], // 10 collar
+      [T,   stD, st,  stH, st,  st,  st,  st,  stH, st,  stD, T  ], // 11 shirt hi
+      [T,   stD, st,  st,  st,  st,  st,  st,  st,  st,  stD, T  ], // 12
+      [T,   stD, st,  st,  st,  st,  st,  st,  st,  st,  stD, T  ], // 13
+      [T,   blt, pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, blt, T  ], // 14 belt
+      [T,   T,   pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, T,   T  ], // 15 pants
+      [T,   T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   T  ], // 16 legs
+      [T,   T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   T  ], // 17 legs
+      [T,   T,   bt,  btH, bt,  T,   T,   bt,  btH, bt,  T,   T  ], // 18 boot top
+      [T,   T,   bt,  btH, bt,  bt,  bt,  bt,  btH, bt,  T,   T  ], // 19 boot toe
+      [T,   T,   bt,  bt,  bt,  bt,  bt,  bt,  bt,  bt,  T,   T  ], // 20 boot sole
     ];
   }
 }
 
-// Draw a character with a specific pose
 // pose: 'stand' | 'sit' | 'lie'
 function drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle) {
   const grid = buildSpriteGrid(player);
-
   if (pose === 'lie') {
     _drawLying(ctx, grid, x, y, scale);
   } else if (pose === 'sit') {
     _drawSitting(ctx, grid, x, y, scale);
   } else {
-    // Standing — bounce only while walking
     const bounce = isIdle ? 0 : Math.sin(frame * 0.35) * scale * 0.4;
     _drawGrid(ctx, grid, x, y + bounce, scale);
   }
@@ -1394,12 +1422,10 @@ function _drawGrid(ctx, grid, x, y, scale) {
 }
 
 function _drawSitting(ctx, grid, x, y, scale) {
-  // Draw full sprite — legs hang below seat naturally
   _drawGrid(ctx, grid, x, y, scale);
 }
 
 function _drawLying(ctx, grid, x, y, scale) {
-  // Draw upright on the bed (竖着躺)
   _drawGrid(ctx, grid, x, y, scale);
 }
 
@@ -1407,12 +1433,11 @@ function drawCharacterWithName(ctx, player, x, y, scale, frame, isActive, pose, 
   pose   = pose   || 'stand';
   isIdle = isIdle !== false;
 
-  // Glow for active player
   if (isActive) {
     ctx.save();
     ctx.shadowColor = '#FFD700';
-    ctx.shadowBlur  = 14;
-    ctx.fillStyle   = 'rgba(255,215,0,0.12)';
+    ctx.shadowBlur  = 16;
+    ctx.fillStyle   = 'rgba(255,215,0,0.10)';
     ctx.fillRect(x - 4, y - 4, 12 * scale + 8, 21 * scale + 8);
     ctx.restore();
   }
