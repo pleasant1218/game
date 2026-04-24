@@ -63,6 +63,7 @@
       <canvas id="game-canvas"></canvas>
       <div class="game-hint">Drag your character to furniture · Click floor to walk ✨</div>
       <div id="coin-display">🪙 <span id="coin-count">0</span></div>
+      <div id="sync-status" style="position:absolute;top:12px;right:12px;font-family:'Press Start 2P',monospace;font-size:7px;padding:4px 8px;border-radius:6px;pointer-events:none;z-index:10"></div>
     </div>
 
     <!-- Side Panel -->
@@ -151,6 +152,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderUI();
   initGame();
   setupCanvasClick();
+
+  // Show cloud sync status
+  const syncEl = document.getElementById('sync-status');
+  if (syncEl) {
+    if (window._supabaseOK) {
+      syncEl.textContent = '☁️ synced';
+      syncEl.style.cssText += 'color:#4CAF50;background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3)';
+    } else {
+      syncEl.textContent = '💾 offline';
+      syncEl.style.cssText += 'color:#888;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)';
+    }
+  }
 
   // Hide loading overlay once everything is ready
   document.getElementById('loading-overlay').style.display = 'none';
