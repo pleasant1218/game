@@ -103,29 +103,13 @@ function _drawGrid(ctx, grid, x, y, scale) {
 }
 
 function _drawSitting(ctx, grid, x, y, scale) {
-  // Show rows 0-13 only (head + torso), clip legs
-  // Shift up slightly so torso sits above furniture seat
-  const yOff = y - 2 * scale;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x - 1, yOff - 1, 12 * scale + 2, 14 * scale + 2);
-  ctx.clip();
-  _drawGrid(ctx, grid, x, yOff, scale);
-  ctx.restore();
+  // Draw full sprite — legs hang below seat naturally
+  _drawGrid(ctx, grid, x, y, scale);
 }
 
 function _drawLying(ctx, grid, x, y, scale) {
-  // Rotate 90° counter-clockwise around character centre
-  const sw = 12 * scale;
-  const sh = 21 * scale;
-  const cx = x + sw / 2;
-  const cy = y + sh / 2;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(-Math.PI / 2);
-  ctx.scale(0.85, 0.85);
-  _drawGrid(ctx, grid, -sw / 2, -sh / 2, scale);
-  ctx.restore();
+  // Draw upright on the bed (竖着躺)
+  _drawGrid(ctx, grid, x, y, scale);
 }
 
 function drawCharacterWithName(ctx, player, x, y, scale, frame, isActive, pose, isIdle) {

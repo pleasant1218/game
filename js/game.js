@@ -176,7 +176,12 @@ function _placeCharInScene(state, player, pane, H, seatIndex) {
   if (state.snapTarget) {
     const snaps = getHomeSnapZones(pW, H);
     const snap  = snaps.find(s => s.id === state.snapTarget);
-    if (snap) { state.x = snap.x; state.y = snap.y; state.targetX = snap.x; }
+    if (snap) {
+      state.x = snap.x; state.y = snap.y; state.targetX = snap.x;
+    } else {
+      // Stale snap ID (e.g. after an update) — reset to floor
+      state.snapTarget = null; state.pose = 'stand'; state.y = floorY;
+    }
   } else {
     state.y = floorY;
   }
@@ -265,18 +270,21 @@ function _onUp(e) {
   const player = Data.getPlayer(id);
   if ((player.status || 'home') !== 'home') return;
 
-  // Try to snap
+  // Snap to the closest zone within SNAP_RADIUS
   const snaps = getHomeSnapZones(pane.paneW, canvas.height);
+  let closestSnap = null, closestDist = SNAP_RADIUS;
   for (const snap of snaps) {
-    if (Math.abs(state.x - snap.x) < SNAP_RADIUS) {
-      state.x          = snap.x;
-      state.targetX    = snap.x;
-      state.y          = snap.y;
-      state.snapTarget = snap.id;
-      state.pose       = snap.pose;
-      Data.updatePlayer(id, { pose: snap.pose, snapTarget: snap.id });
-      return;
-    }
+    const dist = Math.abs(state.x - snap.x);
+    if (dist < closestDist) { closestDist = dist; closestSnap = snap; }
+  }
+  if (closestSnap) {
+    state.x          = closestSnap.x;
+    state.targetX    = closestSnap.x;
+    state.y          = closestSnap.y;
+    state.snapTarget = closestSnap.id;
+    state.pose       = closestSnap.pose;
+    Data.updatePlayer(id, { pose: closestSnap.pose, snapTarget: closestSnap.id });
+    return;
   }
   // No snap — stay where dropped, standing on floor
   state.y          = Math.floor(canvas.height * 0.6) - 21 * SCALE;
