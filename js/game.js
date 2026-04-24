@@ -39,7 +39,7 @@ function resizeCanvas() {
 
 function resetPositions() {
   const W = canvas.width, H = canvas.height;
-  const floorY = H * 0.6 - 21 * SCALE;
+  const floorY = H * 0.6 - SPRITE_H * SCALE;
   bjergState.x  = bjergState.targetX  = W * 0.28;
   hungryState.x = hungryState.targetX = W * 0.62;
   bjergState.y  = hungryState.y = floorY;
@@ -75,7 +75,7 @@ function _updateChar(state, player, W, H) {
   if (state.idleTimer > 220 + Math.random() * 180) {
     state.idleTimer = 0;
     const margin = 40;
-    state.targetX = margin + Math.random() * ((pW || W) - margin * 2 - 12 * SCALE);
+    state.targetX = margin + Math.random() * ((pW || W) - margin * 2 - SPRITE_W * SCALE);
   }
 
   const dx = state.targetX - state.x;
@@ -136,7 +136,7 @@ function _draw() {
 // Place a character appropriately for their scene
 function _placeCharInScene(state, player, pane, H, seatIndex) {
   const scene   = player.status || 'home';
-  const floorY  = Math.floor(H * 0.6) - 21 * SCALE;
+  const floorY  = Math.floor(H * 0.6) - SPRITE_H * SCALE;
   const pW      = pane.paneW;
 
   if (scene === 'classroom') {
@@ -233,7 +233,7 @@ function _onDown(e) {
   if (!pane) return;
 
   const cx = pos.x - pane.offX; // pane-relative x
-  const sw = 12 * SCALE, sh = 21 * SCALE;
+  const sw = SPRITE_W * SCALE, sh = SPRITE_H * SCALE;
 
   // Hit-test character
   if (cx >= state.x - 8 && cx <= state.x + sw + 8 &&
@@ -255,7 +255,7 @@ function _onMove(e) {
   const cx  = pos.x - pane.offX;
   const pW  = pane.paneW;
   const newX = cx - state.dragOffX;
-  state.x       = Math.max(10, Math.min(pW - 12 * SCALE - 10, newX));
+  state.x       = Math.max(10, Math.min(pW - SPRITE_W * SCALE - 10, newX));
   state.targetX = state.x;
   state.idle    = true;
 }
@@ -287,7 +287,7 @@ function _onUp(e) {
     return;
   }
   // No snap — stay where dropped, standing on floor
-  state.y          = Math.floor(canvas.height * 0.6) - 21 * SCALE;
+  state.y          = Math.floor(canvas.height * 0.6) - SPRITE_H * SCALE;
   state.snapTarget = null;
   state.pose       = 'stand';
   Data.updatePlayer(id, { pose: 'stand', snapTarget: null });
@@ -309,7 +309,7 @@ function _onClick(e) {
   const player = Data.getPlayer(id);
   if ((player.status || 'home') !== 'home') return;
 
-  const sw = 12 * SCALE, sh = 21 * SCALE;
+  const sw = SPRITE_W * SCALE, sh = SPRITE_H * SCALE;
   const cx = pos.x - pane.offX;
 
   // Don't walk if clicking on the character itself

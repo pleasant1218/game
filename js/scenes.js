@@ -6,7 +6,7 @@ const SCALE = 4; // keep in sync with game.js
 
 function getHomeSnapZones(paneW, H) {
   const floorY  = Math.floor(H * 0.6);
-  const spriteH = 21 * SCALE;
+  const spriteH = SPRITE_H * SCALE;
   const sx      = paneW * 0.36; // sofa left edge (matches _drawSofa)
   const bx      = paneW * 0.58; // bed left edge  (matches _drawBed)
   return [
@@ -21,7 +21,7 @@ function getHomeSnapZones(paneW, H) {
 // Characters that are in a classroom sit at these positions (indexed 0,1)
 function getClassroomSeatPositions(paneW, H) {
   const floorY  = Math.floor(H * 0.6);
-  const spriteH = 21 * SCALE;
+  const spriteH = SPRITE_H * SCALE;
   return [
     { x: paneW * 0.25, y: floorY - spriteH - 6 },
     { x: paneW * 0.60, y: floorY - spriteH - 6 },
@@ -30,7 +30,7 @@ function getClassroomSeatPositions(paneW, H) {
 
 function getOfficeSeatPositions(paneW, H) {
   const floorY  = Math.floor(H * 0.6);
-  const spriteH = 21 * SCALE;
+  const spriteH = SPRITE_H * SCALE;
   return [
     { x: paneW * 0.18, y: floorY - spriteH - 28 },
     { x: paneW * 0.60, y: floorY - spriteH - 28 },

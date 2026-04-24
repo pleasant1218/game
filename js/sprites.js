@@ -1,5 +1,9 @@
 // Pixel art sprite renderer — Stardew Valley inspired style
 
+// Sprite grid dimensions (in pixel cells, pre-scale)
+const SPRITE_W = 14;
+const SPRITE_H = 24;
+
 const OUTFIT_COLORS = {
   default: { shirt: '#5B9BD5', pants: '#2C3E50' },
   red:     { shirt: '#E74C3C', pants: '#922B21' },
@@ -32,76 +36,93 @@ function buildSpriteGrid(player) {
   const skH = _lt(sk, 30);          // forehead highlight
   const hr  = player.hairColor;
   const hrH = _lt(hr, 50);          // hair highlight
-  const hrD = _dk(hr, 35);          // hair shadow / sideburns
+  const hrD = _dk(hr, 35);          // hair shadow
+  const hrX = _lt(hr, 85);          // extra bright wave crest
   const outfit = OUTFIT_COLORS[player.outfit || 'default'];
   const st  = outfit.shirt;
-  const stH = _lt(st, 32);          // shirt highlight (center)
-  const stD = _dk(st, 42);          // shirt shadow (sides)
+  const stH = _lt(st, 32);          // shirt highlight
+  const stD = _dk(st, 42);          // shirt shadow
   const pn  = outfit.pants;
-  const pnD = _dk(pn, 42);          // pants shadow (sides)
+  const pnD = _dk(pn, 42);          // pants shadow
   const blt = _dk(pn, 70);          // belt
   const ey  = player.eyeColor;
   const eyW = '#F2EAEA';            // warm eye white
   const eyP = _dk(ey, 55);          // pupil
-  const brow = _dk(hr, 10);         // eyebrow (slightly darker hair)
+  const brow = _dk(hr, 10);         // eyebrow
   const ck  = '#F09878';            // cheek blush
   const mt  = '#9A5038';            // mouth
   const bt  = '#3D2B1F';            // boot
   const btH = '#6B4830';            // boot toe highlight
 
   if (player.hairStyle === 'long') {
-    // hungry — voluminous crown, center-parted, wavy flowing sides
+    // hungry — HUGE voluminous wavy long hair, big S-curve waves past shoulders
+    // 14 cols × 24 rows.  Face occupies cols 4–9, rows 6–12; hair
+    // fills rows 0–5 entirely, frames rows 6–13, and flows past the body
+    // on rows 14–19 in alternating wave crests and troughs.
     return [
-      // ── HEAD ──────────────────────────────────────────────────────────────
-      [T,   hrH, hr,  hrH, hr,  hr,  hr,  hrH, hr,  hr,  hrH, T  ], // 0  wide poofy crown, multi-highlight
-      [hrH, hr,  hrH, hr,  hr,  hr,  hr,  hr,  hrH, hr,  hr,  hrH], // 1  maximum width — big hair energy
-      [hr,  hr,  hrH, skH, sk,  sk,  sk,  sk,  skH, hrH, hr,  hr ], // 2  inner hair highlight + forehead
-      [hr,  hr,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  hr,  hr ], // 3  oval face (hair frames tightly)
-      [hr,  sk,  sk,  eyW, ey,  sk,  sk,  eyW, ey,  sk,  sk,  hr ], // 4  eye whites + iris
-      [hr,  sk,  sk,  ey,  eyP, sk,  sk,  ey,  eyP, sk,  sk,  hr ], // 5  iris + pupil
-      [hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr ], // 6  mid face
-      [hr,  sk,  ck,  sk,  sk,  sk,  sk,  sk,  sk,  ck,  sk,  hr ], // 7  cheeks
-      [hr,  sk,  sk,  sk,  sk,  mt,  mt,  sk,  sk,  sk,  sk,  hr ], // 8  mouth
-      [hr,  hr,  hrD, sk,  sk,  sk,  sk,  sk,  sk,  hrD, hr,  hr ], // 9  chin + hair shadow frame
-      // ── BODY — wavy strands, highlight on outer bulge, shadow on inner ───
-      [hrH, T,   stH, st,  st,  st,  st,  st,  st,  stH, T,   hrH], // 10 narrow, crest highlight
-      [hr,  hrD, st,  stH, st,  st,  st,  st,  stH, st,  hrD, hr ], // 11 wide, trough shadow
-      [hrH, T,   stD, st,  st,  st,  st,  st,  st,  stD, T,   hrH], // 12 narrow, crest
-      [hr,  hrD, stD, st,  st,  st,  st,  st,  st,  stD, hrD, hr ], // 13 wide, trough
-      [hrH, T,   blt, pnD, pn,  pn,  pn,  pn,  pnD, blt, T,   hrH], // 14 belt
-      [hr,  hrD, pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, hrD, hr ], // 15 pants
-      [hrH, T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   hrH], // 16 legs
-      [hr,  hrD, pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, hrD, hr ], // 17 legs
-      [hrD, T,   bt,  btH, bt,  T,   T,   bt,  btH, bt,  T,   hrD], // 18 boot top
-      [T,   hrD, bt,  btH, bt,  bt,  bt,  bt,  btH, bt,  hrD, T  ], // 19 boot toe
-      [T,   T,   bt,  bt,  bt,  bt,  bt,  bt,  bt,  bt,  T,   T  ], // 20 boot sole
+      // ── HAIR CROWN (rows 0-5) — 6 dense rows of big hair ─────────────────
+      [T,   T,   hrH, hr,  hrX, hr,  hr,  hr,  hr,  hrX, hr,  hrH, T,   T  ], // 0  top peak
+      [T,   hrH, hr,  hrX, hr,  hrH, hr,  hr,  hrH, hr,  hrX, hr,  hrH, T  ], // 1  spreading
+      [hrH, hr,  hrX, hr,  hrH, hr,  hrH, hr,  hr,  hrH, hr,  hrX, hr,  hrH], // 2  wider, wave texture
+      [hr,  hrX, hr,  hrH, hr,  hrX, hr,  hr,  hrX, hr,  hrH, hr,  hrX, hr ], // 3  MAX volume (14 wide)
+      [hr,  hr,  hrH, hr,  hrH, hr,  hrH, hrH, hr,  hrH, hr,  hrH, hr,  hr ], // 4  textured density
+      [hr,  hrH, hr,  hrH, skH, sk,  sk,  sk,  sk,  skH, hrH, hr,  hrH, hr ], // 5  forehead peek
+      // ── FACE (rows 6-12) — hair tightly frames face ──────────────────────
+      [hr,  hr,  hrH, skH, sk,  sk,  sk,  sk,  sk,  sk,  skH, hrH, hr,  hr ], // 6  forehead
+      [hr,  hrH, hr,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  hr,  hrH, hr ], // 7  eyebrows
+      [hr,  hr,  sk,  sk,  eyW, ey,  sk,  sk,  eyW, ey,  sk,  sk,  hr,  hr ], // 8  eye whites + iris
+      [hr,  hrD, sk,  sk,  ey,  eyP, sk,  sk,  ey,  eyP, sk,  sk,  hrD, hr ], // 9  iris + pupil
+      [hr,  hrD, sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hrD, hr ], // 10 mid face
+      [hr,  hr,  hrD, sk,  ck,  sk,  sk,  sk,  sk,  ck,  sk,  hrD, hr,  hr ], // 11 cheeks
+      [hrH, hr,  hrD, sk,  sk,  sk,  mt,  mt,  sk,  sk,  sk,  hrD, hr,  hrH], // 12 mouth
+      // ── BIG WAVE — hair flows past the shoulders in large S curves ───────
+      [hr,  hrH, hrD, hrD, sk,  sk,  sk,  sk,  sk,  sk,  hrD, hrD, hrH, hr ], // 13 chin / neck, hair wraps
+      [hrX, hr,  hrH, T,   stH, st,  st,  st,  st,  stH, T,   hrH, hr,  hrX], // 14 WAVE CREST outward
+      [hr,  hrH, hr,  hrD, stD, st,  stH, st,  st,  stD, hrD, hr,  hrH, hr ], // 15 hair curls inward
+      [hrH, hr,  hrX, T,   stD, st,  st,  st,  st,  stD, T,   hrX, hr,  hrH], // 16 WAVE CREST outward (wider)
+      [hr,  hrH, hr,  hrD, stD, st,  st,  st,  st,  stD, hrD, hr,  hrH, hr ], // 17 curls inward again
+      [hrH, hr,  hrD, blt, blt, pnD, pn,  pn,  pnD, blt, blt, hrD, hr,  hrH], // 18 belt + wave ends
+      [hr,  hrD, T,   T,   pnD, pn,  pn,  pn,  pn,  pnD, T,   T,   hrD, hr ], // 19 last hair tips
+      // ── LOWER BODY ───────────────────────────────────────────────────────
+      [T,   T,   T,   T,   pnD, pn,  pn,  pn,  pn,  pnD, T,   T,   T,   T  ], // 20 pants
+      [T,   T,   T,   T,   pnD, pn,  T,   T,   pn,  pnD, T,   T,   T,   T  ], // 21 legs split
+      [T,   T,   T,   T,   bt,  btH, bt,  T,   bt,  btH, bt,  T,   T,   T  ], // 22 boot top
+      [T,   T,   T,   T,   bt,  btH, bt,  bt,  bt,  btH, bt,  T,   T,   T  ], // 23 boot sole
     ];
   } else {
-    // bjerg — textured short hair, side-swept with small bang
+    // bjerg — textured thick short hair, swoopy side-swept bang, 4x the volume
+    // 14 cols × 24 rows.  Crown is 5 rows of layered strands;
+    // bang sweeps diagonally across the forehead, sideburns taper down the jaw.
     return [
-      // ── HEAD ──────────────────────────────────────────────────────────────
-      [T,   T,   hrH, hrD, hr,  hrH, hrD, hr,  hrH, hr,  T,   T  ], // 0  textured top (strand detail)
-      [T,   hrH, hr,  hrH, hr,  hr,  hrD, hr,  hrH, hr,  hr,  T  ], // 1  extends left, textured
-      [T,   hr,  hrD, skH, sk,  sk,  sk,  sk,  sk,  sk,  hr,  T  ], // 2  small bang drape + forehead
-      [hr,  hr,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  hr,  hr ], // 3  eyebrows + sideburn frame
-      [hr,  sk,  sk,  eyW, ey,  sk,  sk,  eyW, ey,  sk,  sk,  hr ], // 4  eye whites + iris
-      [hr,  sk,  sk,  ey,  eyP, sk,  sk,  ey,  eyP, sk,  sk,  hr ], // 5  iris + pupil
-      [hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr ], // 6  mid face
-      [hr,  sk,  ck,  sk,  sk,  sk,  sk,  sk,  sk,  ck,  sk,  hr ], // 7  cheeks
-      [T,   hrD, sk,  sk,  sk,  mt,  mt,  sk,  sk,  sk,  hrD, T  ], // 8  mouth + sideburn
-      [T,   T,   hrD, hrD, sk,  sk,  sk,  sk,  hrD, hrD, T,   T  ], // 9  tight sideburns / jaw
-      // ── BODY ──────────────────────────────────────────────────────────────
-      [T,   T,   stH, st,  st,  st,  st,  st,  st,  stH, T,   T  ], // 10 collar
-      [T,   stD, st,  stH, st,  st,  st,  st,  stH, st,  stD, T  ], // 11
-      [T,   stD, st,  st,  st,  st,  st,  st,  st,  st,  stD, T  ], // 12
-      [T,   stD, st,  st,  st,  st,  st,  st,  st,  st,  stD, T  ], // 13
-      [T,   blt, pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, blt, T  ], // 14 belt
-      [T,   T,   pnD, pn,  pn,  pn,  pn,  pn,  pn,  pnD, T,   T  ], // 15
-      [T,   T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   T  ], // 16
-      [T,   T,   pnD, pn,  pn,  T,   T,   pn,  pn,  pnD, T,   T  ], // 17
-      [T,   T,   bt,  btH, bt,  T,   T,   bt,  btH, bt,  T,   T  ], // 18 boot top
-      [T,   T,   bt,  btH, bt,  bt,  bt,  bt,  btH, bt,  T,   T  ], // 19 boot toe
-      [T,   T,   bt,  bt,  bt,  bt,  bt,  bt,  bt,  bt,  T,   T  ], // 20 boot sole
+      // ── HAIR CROWN (rows 0-4) — thick textured spikes ────────────────────
+      [T,   T,   hrH, hr,  hrD, hr,  hrH, hr,  hrD, hr,  hrH, hr,  T,   T  ], // 0  spiky top
+      [T,   hrH, hr,  hrH, hr,  hrD, hr,  hrH, hr,  hrD, hr,  hrH, hr,  T  ], // 1  textured layer
+      [T,   hr,  hrD, hr,  hrH, hr,  hr,  hrD, hr,  hrH, hr,  hr,  hrD, T  ], // 2  layered strands
+      [hr,  hrH, hr,  hrD, hr,  hrH, hr,  hr,  hrH, hr,  hrD, hr,  hrH, hr ], // 3  MAX width + layered
+      [hr,  hr,  hrH, hr,  hrD, hr,  hrH, hr,  hr,  hrD, hr,  hrH, hr,  hrD], // 4  side-swept sweep begins
+      // ── BANG + FOREHEAD (rows 5-6) — bang drapes diagonally ──────────────
+      [T,   hr,  hrH, hrD, hr,  hrH, skH, sk,  sk,  skH, hrH, hrD, hr,  T  ], // 5  bang crosses forehead
+      [T,   T,   hr,  hrD, skH, sk,  sk,  sk,  sk,  sk,  skH, hrD, hr,  T  ], // 6  forehead + sideburn frame
+      // ── FACE (rows 7-12) ─────────────────────────────────────────────────
+      [T,   hr,  hr,  sk,  brow,brow,sk,  sk,  brow,brow,sk,  sk,  hr,  T  ], // 7  eyebrows
+      [T,   hr,  sk,  sk,  eyW, ey,  sk,  sk,  eyW, ey,  sk,  sk,  hr,  T  ], // 8  eye whites + iris
+      [T,   hr,  sk,  sk,  ey,  eyP, sk,  sk,  ey,  eyP, sk,  sk,  hr,  T  ], // 9  iris + pupil
+      [T,   hr,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  sk,  hr,  T  ], // 10 mid face
+      [T,   hrD, sk,  sk,  ck,  sk,  sk,  sk,  sk,  ck,  sk,  sk,  hrD, T  ], // 11 cheeks + sideburns
+      [T,   T,   hrD, sk,  sk,  sk,  mt,  mt,  sk,  sk,  sk,  hrD, T,   T  ], // 12 mouth + sideburn taper
+      [T,   T,   T,   hrD, hrD, sk,  sk,  sk,  sk,  hrD, hrD, T,   T,   T  ], // 13 jaw / neck line
+      // ── BODY (rows 14-19) ────────────────────────────────────────────────
+      [T,   T,   T,   T,   stH, st,  st,  st,  st,  stH, T,   T,   T,   T  ], // 14 collar
+      [T,   T,   T,   stD, st,  stH, st,  st,  stH, st,  stD, T,   T,   T  ], // 15 shoulders
+      [T,   T,   T,   stD, st,  st,  st,  st,  st,  st,  stD, T,   T,   T  ], // 16 torso
+      [T,   T,   T,   stD, st,  st,  st,  st,  st,  st,  stD, T,   T,   T  ], // 17 torso
+      [T,   T,   T,   blt, blt, pnD, pn,  pn,  pnD, blt, blt, T,   T,   T  ], // 18 belt
+      [T,   T,   T,   T,   pnD, pn,  pn,  pn,  pn,  pnD, T,   T,   T,   T  ], // 19 pants
+      // ── LOWER BODY ───────────────────────────────────────────────────────
+      [T,   T,   T,   T,   pnD, pn,  pn,  pn,  pn,  pnD, T,   T,   T,   T  ], // 20 pants
+      [T,   T,   T,   T,   pnD, pn,  T,   T,   pn,  pnD, T,   T,   T,   T  ], // 21 legs split
+      [T,   T,   T,   T,   bt,  btH, bt,  T,   bt,  btH, bt,  T,   T,   T  ], // 22 boot top
+      [T,   T,   T,   T,   bt,  btH, bt,  bt,  bt,  btH, bt,  T,   T,   T  ], // 23 boot sole
     ];
   }
 }
@@ -147,14 +168,14 @@ function drawCharacterWithName(ctx, player, x, y, scale, frame, isActive, pose, 
     ctx.shadowColor = '#FFD700';
     ctx.shadowBlur  = 16;
     ctx.fillStyle   = 'rgba(255,215,0,0.10)';
-    ctx.fillRect(x - 4, y - 4, 12 * scale + 8, 21 * scale + 8);
+    ctx.fillRect(x - 4, y - 4, SPRITE_W * scale + 8, SPRITE_H * scale + 8);
     ctx.restore();
   }
 
   drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle);
 
   // Name tag
-  const tagX = x + (12 * scale) / 2;
+  const tagX = x + (SPRITE_W * scale) / 2;
   const tagY = y - 10;
   ctx.save();
   ctx.font      = `bold ${scale * 2.2}px "Press Start 2P", monospace`;
@@ -183,4 +204,4 @@ function _roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function getSpriteSize(scale) { return { w: 12 * scale, h: 21 * scale }; }
+function getSpriteSize(scale) { return { w: SPRITE_W * scale, h: SPRITE_H * scale }; }
