@@ -128,8 +128,16 @@ function buildSpriteGrid(player) {
 }
 
 // pose: 'stand' | 'sit' | 'lie'
-function drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle) {
-  const grid = buildSpriteGrid(player);
+function drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle, dir) {
+  const grid  = buildSpriteGrid(player);
+  const flip  = dir === -1;
+  if (flip) {
+    ctx.save();
+    const cx = x + (SPRITE_W * scale) / 2;
+    ctx.translate(cx, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-cx, 0);
+  }
   if (pose === 'lie') {
     _drawLying(ctx, grid, x, y, scale);
   } else if (pose === 'sit') {
@@ -139,6 +147,7 @@ function drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle) {
   } else {
     _drawWalking(ctx, grid, x, y, scale, frame);
   }
+  if (flip) ctx.restore();
 }
 
 function _drawGrid(ctx, grid, x, y, scale) {
@@ -155,7 +164,7 @@ function _drawGrid(ctx, grid, x, y, scale) {
 // Walking gait: alternating lower-leg lift (rows 21-23) with a tiny body bob.
 // Left leg spans cols 4-6, right leg cols 7-10 in the sprite grid.
 function _drawWalking(ctx, grid, x, y, scale, frame) {
-  const phase     = frame * 0.28;
+  const phase     = frame * 0.15;
   const leftLift  = Math.max(0, Math.sin(phase))           * scale;
   const rightLift = Math.max(0, Math.sin(phase + Math.PI)) * scale;
   const bodyBob   = -Math.abs(Math.sin(phase)) * scale * 0.25;
@@ -187,9 +196,10 @@ function _drawLying(ctx, grid, x, y, scale) {
   _drawGrid(ctx, grid, x, y, scale);
 }
 
-function drawCharacterWithName(ctx, player, x, y, scale, frame, isActive, pose, isIdle) {
+function drawCharacterWithName(ctx, player, x, y, scale, frame, isActive, pose, isIdle, dir) {
   pose   = pose   || 'stand';
   isIdle = isIdle !== false;
+  dir    = dir    || 1;
 
   if (isActive) {
     ctx.save();
@@ -200,7 +210,7 @@ function drawCharacterWithName(ctx, player, x, y, scale, frame, isActive, pose, 
     ctx.restore();
   }
 
-  drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle);
+  drawCharacterPosed(ctx, player, x, y, scale, frame, pose, isIdle, dir);
 
   // Name tag
   const tagX = x + (SPRITE_W * scale) / 2;
