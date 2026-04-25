@@ -2,19 +2,62 @@
 
 const SCALE = 4; // keep in sync with game.js
 
-// ─── Furniture snap zones ────────────────────────────────────────────────────
+// ─── Movable home furniture ──────────────────────────────────────────────────
+// Catalog of the home pieces that the player can drag-reposition. Positions
+// (the x of each piece's draw anchor) are stored as fractions of paneW in
+// Data.getHomeLayout(); the y offset from floorY and the hit-box are fixed.
 
-function getHomeSnapZones(paneW, H) {
+const HOME_FURNITURE_KEYS = ['desk', 'sofa', 'bed'];
+
+const HOME_FURNITURE_META = {
+  desk: { yFromFloor: -52, bbox: { dx: 0, dy: -46, w: 110, h: 96 } },
+  sofa: { yFromFloor: -58, bbox: { dx: 0, dy:   0, w: 120, h: 64 } },
+  bed:  { yFromFloor: -40, bbox: { dx: 0, dy:   0, w: 130, h: 70 } },
+};
+
+function _resolveFurnitureXY(key, paneW, H, layout) {
+  const lay   = layout || (typeof Data !== 'undefined' ? Data.getHomeLayout() : {});
+  const def   = (typeof Data !== 'undefined' ? Data.getDefaultHomeLayout() : { desk: 0.14, sofa: 0.36, bed: 0.58 });
+  const xPct  = lay[key] != null ? lay[key] : def[key];
+  const x     = Math.round(paneW * xPct);
+  const y     = Math.floor(H * 0.6) + HOME_FURNITURE_META[key].yFromFloor;
+  return { x, y };
+}
+
+// Bounding boxes for hit-testing. Returns one entry per movable piece in
+// pane-relative coordinates.
+function getHomeFurnitureBoxes(paneW, H, layout) {
+  const out = [];
+  for (const key of HOME_FURNITURE_KEYS) {
+    const { x, y } = _resolveFurnitureXY(key, paneW, H, layout);
+    const bb       = HOME_FURNITURE_META[key].bbox;
+    out.push({
+      key,
+      x: x + bb.dx, y: y + bb.dy, w: bb.w, h: bb.h,
+      anchorX: x, anchorY: y,
+    });
+  }
+  return out;
+}
+
+// Min/max anchor x so the piece's bbox stays within the pane.
+function getFurnitureXBounds(key, paneW) {
+  const bb = HOME_FURNITURE_META[key].bbox;
+  return { min: -bb.dx, max: paneW - bb.w - bb.dx };
+}
+
+function getHomeSnapZones(paneW, H, layout) {
   const floorY  = Math.floor(H * 0.6);
   const spriteH = SPRITE_H * SCALE;
-  const sx      = paneW * 0.36; // sofa left edge (matches _drawSofa)
-  const bx      = paneW * 0.58; // bed left edge  (matches _drawBed)
+  const dx = _resolveFurnitureXY('desk', paneW, H, layout).x;
+  const sx = _resolveFurnitureXY('sofa', paneW, H, layout).x;
+  const bx = _resolveFurnitureXY('bed',  paneW, H, layout).x;
   return [
-    { id: 'desk',       x: paneW * 0.18, y: floorY - spriteH - 28, pose: 'sit' },
-    { id: 'sofa-left',  x: sx + 16,      y: floorY - spriteH - 8,  pose: 'sit' },
-    { id: 'sofa-right', x: sx + 60,      y: floorY - spriteH - 8,  pose: 'sit' },
-    { id: 'bed-left',   x: bx + 6,       y: floorY - spriteH + 22, pose: 'lie' },
-    { id: 'bed-right',  x: bx + 74,      y: floorY - spriteH + 22, pose: 'lie' },
+    { id: 'desk',       x: dx + 24, y: floorY - spriteH - 28, pose: 'sit' },
+    { id: 'sofa-left',  x: sx + 16, y: floorY - spriteH - 8,  pose: 'sit' },
+    { id: 'sofa-right', x: sx + 60, y: floorY - spriteH - 8,  pose: 'sit' },
+    { id: 'bed-left',   x: bx + 6,  y: floorY - spriteH + 22, pose: 'lie' },
+    { id: 'bed-right',  x: bx + 74, y: floorY - spriteH + 22, pose: 'lie' },
   ];
 }
 
@@ -41,13 +84,13 @@ function getOfficeSeatPositions(paneW, H) {
 
 // Draws the full canvas, splitting into panes when the two players are in
 // different locations. Returns pane layout so game.js knows where to place chars.
-function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H) {
+function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H, highlightFurnitureKey) {
   const bs = bjergPlayer.status  || 'home';
   const hs = hungryPlayer.status || 'home';
 
   if (bs === hs) {
     // Same scene — full width
-    _drawScenePane(ctx, bs, 0, W, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawScenePane(ctx, bs, 0, W, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
     _drawSceneLabel(ctx, bs, 0, W);
     return {
       bjerg:  { offX: 0, paneW: W, scene: bs },
@@ -56,7 +99,7 @@ function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H) {
   } else {
     const half = Math.floor(W / 2);
     // Left pane: bjerg's scene
-    _drawScenePane(ctx, bs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawScenePane(ctx, bs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
     _drawSceneLabel(ctx, bs, 0, half);
     // Divider
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -64,7 +107,7 @@ function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H) {
     // Right pane: hungry's scene
     ctx.save();
     ctx.translate(half, 0);
-    _drawScenePane(ctx, hs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture);
+    _drawScenePane(ctx, hs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
     _drawSceneLabel(ctx, hs, 0, half);
     ctx.restore();
     return {
@@ -85,14 +128,14 @@ function _drawSceneLabel(ctx, sceneId, offX, paneW) {
   ctx.restore();
 }
 
-function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH) {
+function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH, highlightFurnitureKey) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(offX, 0, paneW, H);
   ctx.clip();
   ctx.translate(offX, 0);
   switch (sceneId) {
-    case 'home':      _drawHome(ctx, paneW, H, [...(furB||[]), ...(furH||[])]); break;
+    case 'home':      _drawHome(ctx, paneW, H, [...(furB||[]), ...(furH||[])], highlightFurnitureKey); break;
     case 'classroom': _drawClassroom(ctx, paneW, H); break;
     case 'office':    _drawOffice(ctx, paneW, H); break;
     case 'cafe':      _drawCafe(ctx, paneW, H); break;
@@ -131,8 +174,9 @@ function drawPlant(ctx, x, y) {
 
 // ─── HOME ─────────────────────────────────────────────────────────────────────
 
-function _drawHome(ctx, W, H, allFurniture) {
+function _drawHome(ctx, W, H, allFurniture, highlightFurnitureKey) {
   const floorY = Math.floor(H * 0.6);
+  const layout = (typeof Data !== 'undefined') ? Data.getHomeLayout() : null;
 
   // Sky gradient
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -165,21 +209,34 @@ function _drawHome(ctx, W, H, allFurniture) {
   // Wall clock (centre top)
   _drawClock(ctx, W / 2, 50);
 
-  // ── Wardrobe (left wall) ──
+  // ── Wardrobe (left wall, fixed) ──
   _drawWardrobe(ctx, W * 0.02, floorY - 110);
 
-  // ── Computer desk ──
-  _drawComputerDesk(ctx, W * 0.14, floorY - 52);
-
-  // ── Sofa ──
-  _drawSofa(ctx, W * 0.36, floorY - 58);
-
-  // ── Bed ──
-  _drawBed(ctx, W * 0.58, floorY - 40);
+  // ── Movable furniture: desk, sofa, bed (positions read from layout) ──
+  const desk = _resolveFurnitureXY('desk', W, H, layout);
+  const sofa = _resolveFurnitureXY('sofa', W, H, layout);
+  const bed  = _resolveFurnitureXY('bed',  W, H, layout);
+  _drawFurnitureHighlight(ctx, 'desk', desk.x, desk.y, highlightFurnitureKey);
+  _drawComputerDesk(ctx, desk.x, desk.y);
+  _drawFurnitureHighlight(ctx, 'sofa', sofa.x, sofa.y, highlightFurnitureKey);
+  _drawSofa(ctx, sofa.x, sofa.y);
+  _drawFurnitureHighlight(ctx, 'bed', bed.x, bed.y, highlightFurnitureKey);
+  _drawBed(ctx, bed.x, bed.y);
 
   // Optional furniture from shop
   if (allFurniture.includes('plant'))     drawPlant(ctx, W - 60, floorY - 44);
   if (allFurniture.includes('bookshelf')) _drawBookshelf(ctx, W * 0.02, floorY - 100);
+}
+
+function _drawFurnitureHighlight(ctx, key, x, y, highlightKey) {
+  if (key !== highlightKey) return;
+  const bb = HOME_FURNITURE_META[key].bbox;
+  ctx.save();
+  ctx.shadowColor = '#FFD700';
+  ctx.shadowBlur  = 18;
+  ctx.fillStyle   = 'rgba(255,215,0,0.18)';
+  ctx.fillRect(x + bb.dx - 4, y + bb.dy - 4, bb.w + 8, bb.h + 8);
+  ctx.restore();
 }
 
 function _drawClock(ctx, cx, cy) {
