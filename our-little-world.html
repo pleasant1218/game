@@ -984,6 +984,7 @@ const Data = {
       cloud = {};
       data.forEach(r => { cloud[r.id] = r.data; });
       this._cloudHadRow = { bjerg: !!cloud['bjerg'], hungry: !!cloud['hungry'] };
+      this._cloudReadOK = true;
       window._supabaseOK = true;
     } catch (e) {
       console.warn('[Supabase] read failed:', e.message);
@@ -992,6 +993,7 @@ const Data = {
       this._cache = raw
         ? JSON.parse(raw)
         : { players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)), sharedMemories: [], version: 1 };
+      this._cloudReadOK = false;
       window._supabaseOK = false;
       return this._cache;
     }
@@ -1060,6 +1062,19 @@ const Data = {
     this._saveTimers[id] = setTimeout(async () => {
       const p = this._cache?.players?.[id];
       if (!p) return;
+      // Data-loss guards: never write unless authenticated AND we successfully
+      // read from cloud (so we know our cache reflects real cloud data, not
+      // empty defaults).
+      if (!Auth?._isAuthenticated) {
+        console.warn('[Supabase] save skipped: not authenticated');
+        return;
+      }
+      if (this._cloudReadOK !== true) {
+        console.warn('[Supabase] save skipped: cloud read had not succeeded');
+        window._supabaseError = 'save blocked: cloud read had not succeeded';
+        if (typeof updateSyncStatus === 'function') updateSyncStatus();
+        return;
+      }
       try {
         await this._upsertPlayer(id, p);
         window._supabaseOK = true;
@@ -1294,9 +1309,20 @@ const Data = {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
+const EVER_AUTHED_KEY = 'coupleGame_everAuthed';
+
 const Auth = {
   _playerId:        null,
   _isAuthenticated: false,
+
+  hasEverAuthed() {
+    try { return localStorage.getItem(EVER_AUTHED_KEY) === '1'; }
+    catch { return false; }
+  },
+
+  _markEverAuthed() {
+    try { localStorage.setItem(EVER_AUTHED_KEY, '1'); } catch {}
+  },
 
   // Called once during loadRemote() — restores existing session
   async initialize() {
@@ -1304,6 +1330,7 @@ const Auth = {
     if (session) {
       this._isAuthenticated = true;
       this._playerId = session.user.user_metadata?.player_id || null;
+      this._markEverAuthed();
     }
     return !!session;
   },
@@ -1316,6 +1343,7 @@ const Auth = {
     if (error) throw error;
     this._isAuthenticated = true;
     this._playerId = data.user.user_metadata?.player_id || null;
+    this._markEverAuthed();
     return { needsPlayerChoice: !this._playerId };
   },
 
@@ -3125,18 +3153,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!p.status)       Data.updatePlayer(id, { status: 'home' });
   });
 
-  // Seed demo data only when NOT logged in (offline / demo mode).
-  // Logged-in users always get their real cloud data — never clobber with defaults.
+  // Seed demo data only on a genuinely-fresh device:
+  //  - not currently signed in
+  //  - never been signed in on this device (otherwise we'd be clobbering the
+  //    user's real data when their session is missing — eg expired / cleared)
   const isLoggedIn = !!Auth.getLoggedIn();
+  const everAuthed = Auth.hasEverAuthed();
   const bjerg = Data.getPlayer('bjerg');
-  if (!isLoggedIn && bjerg.goals.length === 0) {
+  if (!isLoggedIn && !everAuthed && bjerg.goals.length === 0) {
     Data.addGoal('bjerg', { title: 'Reach 93 kg', current: 97, target: 93, unit: 'kg', isPrivate: false });
     Data.addTodo('bjerg', 'Go to the gym', false);
     Data.addTodo('bjerg', 'Drink 2L water today', false);
     Data.addCustomReward('bjerg', { name: 'Go eat sushi 🍣', price: 800, emoji: '🍣' });
   }
   const hungry = Data.getPlayer('hungry');
-  if (!isLoggedIn && hungry.goals.length === 0) {
+  if (!isLoggedIn && !everAuthed && hungry.goals.length === 0) {
     Data.addGoal('hungry', { title: 'Read 12 books this year', current: 3, target: 12, unit: 'books', isPrivate: false });
     Data.addTodo('hungry', 'Study for exam', false);
     Data.addCustomReward('hungry', { name: 'Movie night date 🎬', price: 500, emoji: '🎬' });
