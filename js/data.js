@@ -12,6 +12,7 @@ const DEFAULT_PLAYERS = {
     skin: '#FFDAB9', hairColor: '#8B5E3C', hairStyle: 'short', eyeColor: '#4A90D9',
     coins: 0, outfit: 'default', ownedOutfits: ['default'], furniture: [],
     status: 'home', pose: 'stand', snapTarget: null, pin: null,
+    homeLayout: {}, homeLayoutSavedAt: {},
     goals: [], todos: [], customRewards: [], achievements: [],
     createdAt: Date.now()
   },
@@ -20,10 +21,14 @@ const DEFAULT_PLAYERS = {
     skin: '#F0C89A', hairColor: '#1C1C1C', hairStyle: 'long', eyeColor: '#6B3D2A',
     coins: 0, outfit: 'default', ownedOutfits: ['default'], furniture: [],
     status: 'home', pose: 'stand', snapTarget: null, pin: null,
+    homeLayout: {}, homeLayoutSavedAt: {},
     goals: [], todos: [], customRewards: [], achievements: [],
     createdAt: Date.now()
   }
 };
+
+// Default x positions for movable home furniture, expressed as a fraction of pane width.
+const DEFAULT_HOME_LAYOUT = { desk: 0.14, sofa: 0.36, bed: 0.58 };
 
 const SHOP_ITEMS = {
   outfits: [
@@ -361,6 +366,35 @@ const Data = {
 
   getShopItems()   { return SHOP_ITEMS; },
   getCoinRewards() { return COIN_REWARDS; },
+
+  // ─── Home layout ────────────────────────────────────────────────────────────
+  // Both players share the same home view, so layout is merged across the two
+  // player records using a per-piece last-write-wins on `homeLayoutSavedAt`.
+
+  getDefaultHomeLayout() { return { ...DEFAULT_HOME_LAYOUT }; },
+
+  getHomeLayout() {
+    const data = this.load();
+    const b = data.players.bjerg || {};
+    const h = data.players.hungry || {};
+    const merged = { ...DEFAULT_HOME_LAYOUT };
+    for (const key of Object.keys(DEFAULT_HOME_LAYOUT)) {
+      const bx = b.homeLayout?.[key], bt = b.homeLayoutSavedAt?.[key] || 0;
+      const hx = h.homeLayout?.[key], ht = h.homeLayoutSavedAt?.[key] || 0;
+      if (bx != null && hx != null) merged[key] = bt >= ht ? bx : hx;
+      else if (bx != null)          merged[key] = bx;
+      else if (hx != null)          merged[key] = hx;
+    }
+    return merged;
+  },
+
+  setFurniturePos(playerId, key, xPct) {
+    if (!(key in DEFAULT_HOME_LAYOUT)) return;
+    const player = this.getPlayer(playerId);
+    const homeLayout        = { ...(player.homeLayout || {}),        [key]: xPct };
+    const homeLayoutSavedAt = { ...(player.homeLayoutSavedAt || {}), [key]: Date.now() };
+    this.updatePlayer(playerId, { homeLayout, homeLayoutSavedAt });
+  },
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
