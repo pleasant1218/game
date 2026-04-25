@@ -120,13 +120,13 @@ function _draw() {
     ctx, bjerg,
     bjergCanvasX, bjergState.y, SCALE, bjergState.frame,
     !loggedIn || loggedIn === 'bjerg',
-    bjergState.pose, bjergState.idle
+    bjergState.pose, bjergState.idle, bjergState.dir
   );
   const drawHungry = () => drawCharacterWithName(
     ctx, hungry,
     hungryCanvasX, hungryState.y, SCALE, hungryState.frame,
     !loggedIn || loggedIn === 'hungry',
-    hungryState.pose, hungryState.idle
+    hungryState.pose, hungryState.idle, hungryState.dir
   );
 
   if (bjergCanvasX <= hungryCanvasX) { drawBjerg(); drawHungry(); }
