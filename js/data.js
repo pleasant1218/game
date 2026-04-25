@@ -67,6 +67,12 @@ const Data = {
     // Always reset so index.html can check it after this call
     this._cloudHadRow = { bjerg: false, hungry: false };
 
+    // Snapshot taken BEFORE Auth.initialize() flips everAuthed on. If false,
+    // this is the first authenticated load on this device, so localStorage
+    // can't possibly hold real user data — only demo-seed pollution. We must
+    // not let it influence the merged state.
+    const wasAuthedBefore = Auth.hasEverAuthed();
+
     // ── Step 1: restore Supabase auth session ──────────────────────────────
     const hasSession = await Auth.initialize();
 
@@ -106,11 +112,15 @@ const Data = {
     const local = lsRaw ? JSON.parse(lsRaw) : null;
     const def   = JSON.parse(JSON.stringify(DEFAULT_PLAYERS));
 
-    // Cloud wins when it has a row; fall back to local when cloud is empty.
-    // If both exist, the one with the newer _savedAt timestamp wins.
+    // First-time auth on this device: do NOT trust localStorage. It can only
+    // hold demo-seed pollution from before the first login (real data could
+    // never have been written here — there was no session). Cloud is sole
+    // source of truth on first auth; defaults fill any blanks.
+    const trustLocal = wasAuthedBefore;
+
     const merge = (id) => {
       const c = cloud[id] || null;
-      const l = local?.players?.[id] || null;
+      const l = trustLocal ? (local?.players?.[id] || null) : null;
       if (!c && !l) return { ...def[id] };
       if (!c)       return { ...def[id], ...l };
       if (!l)       return { ...def[id], ...c };
@@ -127,26 +137,28 @@ const Data = {
     localStorage.setItem('coupleGame', JSON.stringify(this._cache));
 
     // ── Step 4: only push rows that don't exist in cloud yet ───────────────
-    // NEVER overwrite an existing cloud row here — trust Supabase as the
-    // source of truth.  Individual updatePlayer() calls handle incremental saves.
-    try {
-      for (const id of ['bjerg', 'hungry']) {
-        if (!cloud[id]) {
-          // Only push if local had real user data (not just app defaults)
-          const lp = local?.players?.[id];
-          const hasRealData = lp && (
-            lp.goals?.length || lp.todos?.length || lp.coins ||
-            lp.customRewards?.length || lp.furniture?.length
-          );
-          if (hasRealData) {
-            await this._upsertPlayer(id, this._cache.players[id]);
+    // Same rule: only trust local as a source for migration when this device
+    // has been authenticated before. On first auth, skip — local can't hold
+    // anything but pre-login demo / defaults.
+    if (trustLocal) {
+      try {
+        for (const id of ['bjerg', 'hungry']) {
+          if (!cloud[id]) {
+            const lp = local?.players?.[id];
+            const hasRealData = lp && (
+              lp.goals?.length || lp.todos?.length || lp.coins ||
+              lp.customRewards?.length || lp.furniture?.length
+            );
+            if (hasRealData) {
+              await this._upsertPlayer(id, this._cache.players[id]);
+            }
           }
         }
+      } catch (e) {
+        console.warn('[Supabase] init write failed:', e.message);
+        window._supabaseError = 'write: ' + e.message;
+        window._supabaseOK = false;
       }
-    } catch (e) {
-      console.warn('[Supabase] init write failed:', e.message);
-      window._supabaseError = 'write: ' + e.message;
-      window._supabaseOK = false;
     }
 
     return this._cache;
@@ -467,6 +479,12 @@ const Auth = {
     await _db.auth.signOut();
     this._playerId = null;
     this._isAuthenticated = false;
+    // Clear the player cache so the next visitor doesn't inherit our data
+    // through the localStorage merge path. Keep EVER_AUTHED_KEY set so the
+    // demo-seed block never runs on this device again.
+    try { localStorage.removeItem('coupleGame'); } catch {}
+    if (Data && Data._cache) Data._cache = null;
+    if (Data) Data._cloudReadOK = false;
     location.reload();
   },
 };
