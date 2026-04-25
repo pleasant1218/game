@@ -4,6 +4,14 @@
 const WALK_SPEED  = 1.4;
 const SNAP_RADIUS = 55;
 
+// Furniture long-press: pointer must hold still on a piece for this many ms
+// before drag mode kicks in. Movement greater than the threshold cancels.
+const FURN_LONG_PRESS_MS  = 400;
+const FURN_MOVE_THRESHOLD = 5;
+let _furnPress = null;          // pending long-press: { key, downX, downY, grabOffsetX, paneOffX, paneW, timerId }
+let _furnDrag  = null;          // active drag:        { key, grabOffsetX, paneOffX, paneW }
+let _suppressNextClick = false;
+
 let canvas, ctx;
 let frame = 0;
 let bjergState, hungryState;
@@ -101,7 +109,7 @@ function _draw() {
   ctx.clearRect(0, 0, W, H);
 
   // Draw rooms and get pane layout
-  paneLayout = drawWorldAndGetPanes(ctx, bjerg, hungry, W, H);
+  paneLayout = drawWorldAndGetPanes(ctx, bjerg, hungry, W, H, _furnDrag?.key);
   // Attach player ids for _updateChar
   paneLayout.bjerg.id  = 'bjerg';
   paneLayout.hungry.id = 'hungry';
@@ -235,18 +243,72 @@ function _onDown(e) {
   const cx = pos.x - pane.offX; // pane-relative x
   const sw = SPRITE_W * SCALE, sh = SPRITE_H * SCALE;
 
-  // Hit-test character
+  // 1) Character hit-test takes priority over furniture.
   if (cx >= state.x - 8 && cx <= state.x + sw + 8 &&
       pos.y >= state.y - 8 && pos.y <= state.y + sh + 8) {
     state.dragging  = true;
     state.snapTarget = null;
     state.pose      = 'stand';
     state.dragOffX  = cx - state.x;
+    return;
   }
+
+  // 2) Furniture long-press — only when the controlled player is at home.
+  const player = Data.getPlayer(id);
+  if ((player.status || 'home') !== 'home') return;
+  const boxes = getHomeFurnitureBoxes(pane.paneW, canvas.height);
+  let hit = null;
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const b = boxes[i];
+    if (cx >= b.x && cx <= b.x + b.w &&
+        pos.y >= b.y && pos.y <= b.y + b.h) { hit = b; break; }
+  }
+  if (!hit) return;
+
+  const press = {
+    key: hit.key,
+    downX: pos.x, downY: pos.y,
+    grabOffsetX: cx - hit.anchorX,
+    paneOffX: pane.offX, paneW: pane.paneW,
+    timerId: null,
+  };
+  press.timerId = setTimeout(() => {
+    if (_furnPress !== press) return; // cancelled
+    _furnDrag = {
+      key: press.key,
+      grabOffsetX: press.grabOffsetX,
+      paneOffX: press.paneOffX,
+      paneW:    press.paneW,
+    };
+    _furnPress = null;
+    if (navigator.vibrate) navigator.vibrate(15);
+  }, FURN_LONG_PRESS_MS);
+  _furnPress = press;
 }
 
 function _onMove(e) {
   const pos   = _canvasPos(e);
+
+  // Furniture drag in progress — update layout live.
+  if (_furnDrag) {
+    const cx       = pos.x - _furnDrag.paneOffX;
+    const newX     = cx - _furnDrag.grabOffsetX;
+    const bounds   = getFurnitureXBounds(_furnDrag.key, _furnDrag.paneW);
+    const clamped  = Math.max(bounds.min, Math.min(bounds.max, newX));
+    Data.setFurniturePos(_getControlledId(), _furnDrag.key, clamped / _furnDrag.paneW);
+    return;
+  }
+
+  // Pending long-press — cancel if the pointer drifted too far.
+  if (_furnPress) {
+    const dx = pos.x - _furnPress.downX, dy = pos.y - _furnPress.downY;
+    if (dx*dx + dy*dy > FURN_MOVE_THRESHOLD * FURN_MOVE_THRESHOLD) {
+      clearTimeout(_furnPress.timerId);
+      _furnPress = null;
+    }
+    return;
+  }
+
   const id    = _getControlledId();
   const state = _getControlledState();
   const pane  = paneLayout?.[id];
@@ -261,6 +323,16 @@ function _onMove(e) {
 }
 
 function _onUp(e) {
+  // End any pending furniture press / active drag first.
+  if (_furnDrag) {
+    _furnDrag = null;
+    _suppressNextClick = true;
+  }
+  if (_furnPress) {
+    clearTimeout(_furnPress.timerId);
+    _furnPress = null;
+  }
+
   const id    = _getControlledId();
   const state = _getControlledState();
   const pane  = paneLayout?.[id];
@@ -300,6 +372,7 @@ function setupCanvasClick() {
 }
 
 function _onClick(e) {
+  if (_suppressNextClick) { _suppressNextClick = false; return; }
   const pos   = _canvasPos(e);
   const id    = _getControlledId();
   const state = _getControlledState();
