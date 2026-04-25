@@ -87,6 +87,7 @@ const Data = {
       cloud = {};
       data.forEach(r => { cloud[r.id] = r.data; });
       this._cloudHadRow = { bjerg: !!cloud['bjerg'], hungry: !!cloud['hungry'] };
+      this._cloudReadOK = true;
       window._supabaseOK = true;
     } catch (e) {
       console.warn('[Supabase] read failed:', e.message);
@@ -95,6 +96,7 @@ const Data = {
       this._cache = raw
         ? JSON.parse(raw)
         : { players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)), sharedMemories: [], version: 1 };
+      this._cloudReadOK = false;
       window._supabaseOK = false;
       return this._cache;
     }
@@ -163,6 +165,20 @@ const Data = {
     this._saveTimers[id] = setTimeout(async () => {
       const p = this._cache?.players?.[id];
       if (!p) return;
+      // ── Data-loss guards ──────────────────────────────────────────────────
+      // Never write to cloud unless we are authenticated and the cache we are
+      // about to upload was actually populated from a successful cloud read.
+      // Otherwise demo / empty defaults can clobber real cloud data.
+      if (!Auth?._isAuthenticated) {
+        console.warn('[Supabase] save skipped: not authenticated');
+        return;
+      }
+      if (this._cloudReadOK !== true) {
+        console.warn('[Supabase] save skipped: cloud read had not succeeded');
+        window._supabaseError = 'save blocked: cloud read had not succeeded';
+        if (typeof updateSyncStatus === 'function') updateSyncStatus();
+        return;
+      }
       try {
         await this._upsertPlayer(id, p);
         window._supabaseOK = true;
@@ -399,9 +415,23 @@ const Data = {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
+const EVER_AUTHED_KEY = 'coupleGame_everAuthed';
+
 const Auth = {
   _playerId:        null,
   _isAuthenticated: false,
+
+  // Synchronous — true once any successful sign-in has happened on this device,
+  // even after sign-out. Used to suppress demo-data seeding on subsequent
+  // unauthenticated loads (which used to clobber real cloud data).
+  hasEverAuthed() {
+    try { return localStorage.getItem(EVER_AUTHED_KEY) === '1'; }
+    catch { return false; }
+  },
+
+  _markEverAuthed() {
+    try { localStorage.setItem(EVER_AUTHED_KEY, '1'); } catch {}
+  },
 
   // Called once during loadRemote() — restores existing session
   async initialize() {
@@ -409,6 +439,7 @@ const Auth = {
     if (session) {
       this._isAuthenticated = true;
       this._playerId = session.user.user_metadata?.player_id || null;
+      this._markEverAuthed();
     }
     return !!session;
   },
@@ -421,6 +452,7 @@ const Auth = {
     if (error) throw error;
     this._isAuthenticated = true;
     this._playerId = data.user.user_metadata?.player_id || null;
+    this._markEverAuthed();
     return { needsPlayerChoice: !this._playerId };
   },
 
