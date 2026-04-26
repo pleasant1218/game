@@ -87,11 +87,13 @@ function getOfficeSeatPositions(paneW, H) {
 function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H, highlightFurnitureKey) {
   const bs = bjergPlayer.status  || 'home';
   const hs = hungryPlayer.status || 'home';
+  const bCustoms = _customStatusMap(bjergPlayer);
+  const hCustoms = _customStatusMap(hungryPlayer);
 
   if (bs === hs) {
     // Same scene — full width
-    _drawScenePane(ctx, bs, 0, W, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
-    _drawSceneLabel(ctx, bs, 0, W);
+    _drawScenePane(ctx, bs, 0, W, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey, bCustoms);
+    _drawSceneLabel(ctx, bs, 0, W, bCustoms);
     return {
       bjerg:  { offX: 0, paneW: W, scene: bs },
       hungry: { offX: 0, paneW: W, scene: hs },
@@ -99,16 +101,16 @@ function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H, highlightFur
   } else {
     const half = Math.floor(W / 2);
     // Left pane: bjerg's scene
-    _drawScenePane(ctx, bs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
-    _drawSceneLabel(ctx, bs, 0, half);
+    _drawScenePane(ctx, bs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey, bCustoms);
+    _drawSceneLabel(ctx, bs, 0, half, bCustoms);
     // Divider
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(half - 2, 0, 4, H);
     // Right pane: hungry's scene
     ctx.save();
     ctx.translate(half, 0);
-    _drawScenePane(ctx, hs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
-    _drawSceneLabel(ctx, hs, 0, half);
+    _drawScenePane(ctx, hs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey, hCustoms);
+    _drawSceneLabel(ctx, hs, 0, half, hCustoms);
     ctx.restore();
     return {
       bjerg:  { offX: 0,    paneW: half, scene: bs },
@@ -117,9 +119,20 @@ function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H, highlightFur
   }
 }
 
-function _drawSceneLabel(ctx, sceneId, offX, paneW) {
+function _customStatusMap(player) {
+  const out = {};
+  (player?.customStatuses || []).forEach(s => { out[s.id] = s; });
+  return out;
+}
+
+function _drawSceneLabel(ctx, sceneId, offX, paneW, customMap) {
   const labels = { home: '🏠 Home', classroom: '📚 School', office: '💼 Work', cafe: '☕ Café' };
-  const text   = labels[sceneId] || sceneId;
+  let text = labels[sceneId];
+  if (!text && customMap && customMap[sceneId]) {
+    const c = customMap[sceneId];
+    text = `${c.emoji} ${c.label}`;
+  }
+  text = text || sceneId;
   ctx.save();
   ctx.font      = '10px "Press Start 2P", monospace';
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
@@ -128,7 +141,7 @@ function _drawSceneLabel(ctx, sceneId, offX, paneW) {
   ctx.restore();
 }
 
-function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH, highlightFurnitureKey) {
+function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH, highlightFurnitureKey, customMap) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(offX, 0, paneW, H);
@@ -139,9 +152,36 @@ function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH, highlightFurni
     case 'classroom': _drawClassroom(ctx, paneW, H); break;
     case 'office':    _drawOffice(ctx, paneW, H); break;
     case 'cafe':      _drawCafe(ctx, paneW, H); break;
-    default:          _drawHome(ctx, paneW, H, []); break;
+    default:
+      if (customMap && customMap[sceneId]) _drawEmptyRoom(ctx, paneW, H);
+      else                                 _drawHome(ctx, paneW, H, []);
+      break;
   }
   ctx.restore();
+}
+
+// Empty user-defined room — just floor + wallpapered wall + baseboard.
+function _drawEmptyRoom(ctx, W, H) {
+  const floorY = Math.floor(H * 0.6);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#B8D4F8'); g.addColorStop(1, '#E8D5F5');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  pxr(ctx, 0, 0, W, floorY, '#F0E6D3');
+  ctx.fillStyle = 'rgba(180,140,100,0.12)';
+  for (let xi = 20; xi < W; xi += 30)
+    for (let yi = 20; yi < floorY; yi += 30) {
+      ctx.beginPath(); ctx.arc(xi, yi, 2, 0, Math.PI*2); ctx.fill();
+    }
+
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0, '#D4A853'); fg.addColorStop(1, '#B8893A');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H - floorY);
+  ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
+  for (let xi = 0; xi < W; xi += 55) {
+    ctx.beginPath(); ctx.moveTo(xi, floorY); ctx.lineTo(xi, H); ctx.stroke();
+  }
+  pxr(ctx, 0, floorY, W, 5, '#C49A6C');
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
