@@ -13,6 +13,7 @@ const DEFAULT_PLAYERS = {
     coins: 0, outfit: 'default', ownedOutfits: ['default'], furniture: [],
     status: 'home', pose: 'stand', snapTarget: null, pin: null,
     homeLayout: {}, homeLayoutSavedAt: {},
+    customStatuses: [],
     goals: [], todos: [], customRewards: [], achievements: [],
     createdAt: Date.now()
   },
@@ -22,6 +23,7 @@ const DEFAULT_PLAYERS = {
     coins: 0, outfit: 'default', ownedOutfits: ['default'], furniture: [],
     status: 'home', pose: 'stand', snapTarget: null, pin: null,
     homeLayout: {}, homeLayoutSavedAt: {},
+    customStatuses: [],
     goals: [], todos: [], customRewards: [], achievements: [],
     createdAt: Date.now()
   }
@@ -422,6 +424,35 @@ const Data = {
     const homeLayout        = { ...(player.homeLayout || {}),        [key]: xPct };
     const homeLayoutSavedAt = { ...(player.homeLayoutSavedAt || {}), [key]: Date.now() };
     this.updatePlayer(playerId, { homeLayout, homeLayoutSavedAt });
+  },
+
+  // ─── Custom statuses (player-defined empty rooms) ───────────────────────────
+
+  getCustomStatuses(playerId) {
+    return this.getPlayer(playerId).customStatuses || [];
+  },
+
+  addCustomStatus(playerId, label, emoji) {
+    const player = this.getPlayer(playerId);
+    const trimmed = (label || '').trim();
+    if (!trimmed) return null;
+    const status = {
+      id: 'custom-' + Date.now().toString(),
+      label: trimmed.slice(0, 24),
+      emoji: (emoji || '✨').trim().slice(0, 4) || '✨',
+    };
+    const list = [...(player.customStatuses || []), status];
+    this.updatePlayer(playerId, { customStatuses: list });
+    return status;
+  },
+
+  removeCustomStatus(playerId, statusId) {
+    const player = this.getPlayer(playerId);
+    const list   = (player.customStatuses || []).filter(s => s.id !== statusId);
+    const updates = { customStatuses: list };
+    // If the player is currently in the room being deleted, send them home.
+    if (player.status === statusId) updates.status = 'home';
+    this.updatePlayer(playerId, updates);
   },
 };
 

@@ -175,6 +175,17 @@ function _placeCharInScene(state, player, pane, H, seatIndex) {
     return;
   }
 
+  // Custom user-defined empty room — just stand on the floor near the centre.
+  if (scene !== 'home') {
+    state.x    = pW * (seatIndex === 0 ? 0.35 : 0.55);
+    state.targetX = state.x;
+    state.y    = floorY;
+    state.pose = 'stand';
+    state.snapTarget = null;
+    state.idle = true;
+    return;
+  }
+
   // Home — sync pose/snap from Data so both accounts see the same state
   if (!state.dragging) {
     state.pose       = player.pose       || 'stand';
