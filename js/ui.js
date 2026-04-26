@@ -327,9 +327,12 @@ function updateGoalProgress(goalId) {
 // ─── TODOS PANEL ────────────────────────────────────────────────────────────
 
 function renderTodosPanel() {
-  const player = Data.getPlayer(activePlayer);
-  const pending = player.todos.filter(t => !t.done);
-  const done = player.todos.filter(t => t.done).slice(-5);
+  const player    = Data.getPlayer(activePlayer);
+  const today     = _getTodayString();
+  const dailies   = player.todos.filter(t =>  t.isDaily);
+  const oneTime   = player.todos.filter(t => !t.isDaily);
+  const pending   = oneTime.filter(t => !t.done);
+  const done      = oneTime.filter(t =>  t.done).slice(-5);
 
   let html = `<div class="panel-section">
     <div class="section-header">
@@ -342,6 +345,9 @@ function renderTodosPanel() {
     html += `<div class="add-form">
       <input type="text" id="todo-text" placeholder="What do you need to do?" class="input-full">
       <label class="checkbox-label">
+        <input type="checkbox" id="todo-daily"> 🔁 Daily (resets every day)
+      </label>
+      <label class="checkbox-label">
         <input type="checkbox" id="todo-private"> 🔒 Keep private
       </label>
       <div class="form-actions">
@@ -351,10 +357,26 @@ function renderTodosPanel() {
     </div>`;
   }
 
-  if (pending.length === 0 && !showAddTodo) {
+  if (dailies.length > 0) {
+    html += `<div class="section-sub">🔁 Daily — resets every day</div>`;
+    dailies.forEach(todo => {
+      const doneToday = todo.lastCompletedDate === today;
+      html += `
+        <div class="todo-item ${doneToday ? 'done' : ''}">
+          <button class="todo-check ${doneToday ? 'done-check' : ''}" onclick="toggleDailyTodo('${todo.id}')">${doneToday ? '✓' : '○'}</button>
+          <span class="todo-text ${todo.isPrivate ? 'private' : ''} ${doneToday ? 'done-text' : ''}">${todo.isPrivate ? '🔒 ' : ''}${escHtml(todo.text)}</span>
+          <button class="btn-icon" onclick="deleteTodo('${todo.id}')">✕</button>
+        </div>`;
+    });
+  }
+
+  if (pending.length === 0 && dailies.length === 0 && !showAddTodo) {
     html += `<div class="empty-state">All done! 🎉<br>Add more tasks to earn coins.</div>`;
   }
 
+  if (pending.length > 0 && dailies.length > 0) {
+    html += `<div class="section-sub">One-time tasks</div>`;
+  }
   pending.forEach(todo => {
     html += `
       <div class="todo-item">
@@ -383,10 +405,11 @@ function renderTodosPanel() {
 function toggleAddTodo() { showAddTodo = !showAddTodo; renderPanel(); }
 
 function submitTodo() {
-  const text = document.getElementById('todo-text').value.trim();
+  const text      = document.getElementById('todo-text').value.trim();
   const isPrivate = document.getElementById('todo-private').checked;
+  const isDaily   = document.getElementById('todo-daily').checked;
   if (!text) return;
-  Data.addTodo(activePlayer, text, isPrivate);
+  Data.addTodo(activePlayer, text, isPrivate, isDaily);
   showAddTodo = false;
   renderUI();
 }
@@ -394,6 +417,12 @@ function submitTodo() {
 function completeTodo(todoId) {
   const coins = Data.completeTodo(activePlayer, todoId);
   showNotification(`Task done! +${coins} 🪙`, 'coins');
+  renderUI();
+}
+
+function toggleDailyTodo(todoId) {
+  const coins = Data.toggleDailyDone(activePlayer, todoId);
+  if (coins > 0) showNotification(`Daily done! +${coins} 🪙`, 'coins');
   renderUI();
 }
 
