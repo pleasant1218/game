@@ -987,6 +987,14 @@ const COIN_REWARDS = {
   goalComplete: 500, streak7: 100, streak30: 500,
 };
 
+// Local-time YYYY-MM-DD, used to gate daily-todo completion / coin reward.
+function _getTodayString() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+         String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+}
+
 const Data = {
   _cache: null,
   _saveTimers: {},
@@ -1230,9 +1238,19 @@ const Data = {
 
   // ─── Todos ───────────────────────────────────────────────────────────────────
 
-  addTodo(playerId, text, isPrivate = false) {
+  addTodo(playerId, text, isPrivate = false, isDaily = false) {
     const player = this.getPlayer(playerId);
-    const todo = { id: Date.now().toString(), text, isPrivate, done: false, createdAt: Date.now() };
+    const todo = {
+      id: Date.now().toString(),
+      text, isPrivate,
+      isDaily: !!isDaily,
+      done: false,
+      createdAt: Date.now(),
+    };
+    if (isDaily) {
+      todo.lastCompletedDate  = null;
+      todo.coinsAwardedDate   = null;
+    }
     this.updatePlayer(playerId, { todos: [...player.todos, todo] });
     return todo;
   },
@@ -1244,6 +1262,36 @@ const Data = {
     );
     this.updatePlayer(playerId, { todos, coins: player.coins + COIN_REWARDS.todoComplete });
     return COIN_REWARDS.todoComplete;
+  },
+
+  toggleDailyDone(playerId, todoId) {
+    const today  = _getTodayString();
+    const player = this.getPlayer(playerId);
+    const todo   = player.todos.find(t => t.id === todoId);
+    if (!todo || !todo.isDaily) return 0;
+
+    const wasDoneToday = todo.lastCompletedDate === today;
+    let coinsEarned = 0;
+
+    const todos = player.todos.map(t => {
+      if (t.id !== todoId) return t;
+      if (wasDoneToday) {
+        return { ...t, lastCompletedDate: null };
+      }
+      const alreadyAwarded = t.coinsAwardedDate === today;
+      if (!alreadyAwarded) coinsEarned = COIN_REWARDS.todoComplete;
+      return {
+        ...t,
+        lastCompletedDate: today,
+        coinsAwardedDate:  alreadyAwarded ? t.coinsAwardedDate : today,
+      };
+    });
+
+    this.updatePlayer(playerId, {
+      todos,
+      coins: player.coins + coinsEarned,
+    });
+    return coinsEarned;
   },
 
   deleteTodo(playerId, todoId) {
@@ -2507,9 +2555,12 @@ function updateGoalProgress(goalId) {
 // ─── TODOS PANEL ────────────────────────────────────────────────────────────
 
 function renderTodosPanel() {
-  const player = Data.getPlayer(activePlayer);
-  const pending = player.todos.filter(t => !t.done);
-  const done = player.todos.filter(t => t.done).slice(-5);
+  const player    = Data.getPlayer(activePlayer);
+  const today     = _getTodayString();
+  const dailies   = player.todos.filter(t =>  t.isDaily);
+  const oneTime   = player.todos.filter(t => !t.isDaily);
+  const pending   = oneTime.filter(t => !t.done);
+  const done      = oneTime.filter(t =>  t.done).slice(-5);
 
   let html = `<div class="panel-section">
     <div class="section-header">
@@ -2522,6 +2573,9 @@ function renderTodosPanel() {
     html += `<div class="add-form">
       <input type="text" id="todo-text" placeholder="What do you need to do?" class="input-full">
       <label class="checkbox-label">
+        <input type="checkbox" id="todo-daily"> 🔁 Daily (resets every day)
+      </label>
+      <label class="checkbox-label">
         <input type="checkbox" id="todo-private"> 🔒 Keep private
       </label>
       <div class="form-actions">
@@ -2531,10 +2585,26 @@ function renderTodosPanel() {
     </div>`;
   }
 
-  if (pending.length === 0 && !showAddTodo) {
+  if (dailies.length > 0) {
+    html += `<div class="section-sub">🔁 Daily — resets every day</div>`;
+    dailies.forEach(todo => {
+      const doneToday = todo.lastCompletedDate === today;
+      html += `
+        <div class="todo-item ${doneToday ? 'done' : ''}">
+          <button class="todo-check ${doneToday ? 'done-check' : ''}" onclick="toggleDailyTodo('${todo.id}')">${doneToday ? '✓' : '○'}</button>
+          <span class="todo-text ${todo.isPrivate ? 'private' : ''} ${doneToday ? 'done-text' : ''}">${todo.isPrivate ? '🔒 ' : ''}${escHtml(todo.text)}</span>
+          <button class="btn-icon" onclick="deleteTodo('${todo.id}')">✕</button>
+        </div>`;
+    });
+  }
+
+  if (pending.length === 0 && dailies.length === 0 && !showAddTodo) {
     html += `<div class="empty-state">All done! 🎉<br>Add more tasks to earn coins.</div>`;
   }
 
+  if (pending.length > 0 && dailies.length > 0) {
+    html += `<div class="section-sub">One-time tasks</div>`;
+  }
   pending.forEach(todo => {
     html += `
       <div class="todo-item">
@@ -2563,10 +2633,11 @@ function renderTodosPanel() {
 function toggleAddTodo() { showAddTodo = !showAddTodo; renderPanel(); }
 
 function submitTodo() {
-  const text = document.getElementById('todo-text').value.trim();
+  const text      = document.getElementById('todo-text').value.trim();
   const isPrivate = document.getElementById('todo-private').checked;
+  const isDaily   = document.getElementById('todo-daily').checked;
   if (!text) return;
-  Data.addTodo(activePlayer, text, isPrivate);
+  Data.addTodo(activePlayer, text, isPrivate, isDaily);
   showAddTodo = false;
   renderUI();
 }
@@ -2574,6 +2645,12 @@ function submitTodo() {
 function completeTodo(todoId) {
   const coins = Data.completeTodo(activePlayer, todoId);
   showNotification(`Task done! +${coins} 🪙`, 'coins');
+  renderUI();
+}
+
+function toggleDailyTodo(todoId) {
+  const coins = Data.toggleDailyDone(activePlayer, todoId);
+  if (coins > 0) showNotification(`Daily done! +${coins} 🪙`, 'coins');
   renderUI();
 }
 

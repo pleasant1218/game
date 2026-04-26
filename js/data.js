@@ -59,6 +59,14 @@ const COIN_REWARDS = {
   goalComplete: 500, streak7: 100, streak30: 500,
 };
 
+// Local-time YYYY-MM-DD, used to gate daily-todo completion / coin reward.
+function _getTodayString() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+         String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+}
+
 const Data = {
   _cache: null,
   _saveTimers: {},
@@ -308,9 +316,19 @@ const Data = {
 
   // ─── Todos ───────────────────────────────────────────────────────────────────
 
-  addTodo(playerId, text, isPrivate = false) {
+  addTodo(playerId, text, isPrivate = false, isDaily = false) {
     const player = this.getPlayer(playerId);
-    const todo = { id: Date.now().toString(), text, isPrivate, done: false, createdAt: Date.now() };
+    const todo = {
+      id: Date.now().toString(),
+      text, isPrivate,
+      isDaily: !!isDaily,
+      done: false,
+      createdAt: Date.now(),
+    };
+    if (isDaily) {
+      todo.lastCompletedDate  = null;
+      todo.coinsAwardedDate   = null;
+    }
     this.updatePlayer(playerId, { todos: [...player.todos, todo] });
     return todo;
   },
@@ -322,6 +340,37 @@ const Data = {
     );
     this.updatePlayer(playerId, { todos, coins: player.coins + COIN_REWARDS.todoComplete });
     return COIN_REWARDS.todoComplete;
+  },
+
+  // Daily todos toggle on/off. Coins are awarded at most once per local day.
+  toggleDailyDone(playerId, todoId) {
+    const today  = _getTodayString();
+    const player = this.getPlayer(playerId);
+    const todo   = player.todos.find(t => t.id === todoId);
+    if (!todo || !todo.isDaily) return 0;
+
+    const wasDoneToday = todo.lastCompletedDate === today;
+    let coinsEarned = 0;
+
+    const todos = player.todos.map(t => {
+      if (t.id !== todoId) return t;
+      if (wasDoneToday) {
+        return { ...t, lastCompletedDate: null };
+      }
+      const alreadyAwarded = t.coinsAwardedDate === today;
+      if (!alreadyAwarded) coinsEarned = COIN_REWARDS.todoComplete;
+      return {
+        ...t,
+        lastCompletedDate: today,
+        coinsAwardedDate:  alreadyAwarded ? t.coinsAwardedDate : today,
+      };
+    });
+
+    this.updatePlayer(playerId, {
+      todos,
+      coins: player.coins + coinsEarned,
+    });
+    return coinsEarned;
   },
 
   deleteTodo(playerId, todoId) {
