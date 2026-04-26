@@ -574,6 +574,7 @@ function renderStatusPanel() {
     { id: 'office',    label: 'At Work',     emoji: '💼' },
     { id: 'cafe',      label: 'At Café',     emoji: '☕' },
   ];
+  const customs = player.customStatuses || [];
 
   let html = `<div class="panel-section">
     <div class="section-header"><span>📍 Current Status</span></div>
@@ -587,6 +588,24 @@ function renderStatusPanel() {
         ${player.status === s.id ? '<div class="status-check">✓</div>' : ''}
       </div>`;
   });
+
+  customs.forEach(s => {
+    const safeLabel = String(s.label).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const safeEmoji = String(s.emoji).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    html += `
+      <div class="status-item ${player.status === s.id ? 'active' : ''}" onclick="setStatus('${s.id}')">
+        <button class="status-remove" onclick="event.stopPropagation(); removeCustomStatus('${s.id}')" title="Delete this status">×</button>
+        <div class="status-emoji">${safeEmoji}</div>
+        <div class="status-label">${safeLabel}</div>
+        ${player.status === s.id ? '<div class="status-check">✓</div>' : ''}
+      </div>`;
+  });
+
+  html += `
+    <div class="status-item status-add" onclick="addCustomStatus()" title="Create a new status">
+      <div class="status-emoji">＋</div>
+      <div class="status-label">New status</div>
+    </div>`;
 
   html += `</div></div>`;
 
@@ -622,6 +641,25 @@ function renderStatusPanel() {
 
 function setStatus(statusId) {
   Data.setStatus(getActivePlayer(), statusId);
+  renderUI();
+  window.gameNeedsRedraw = true;
+}
+
+function addCustomStatus() {
+  const label = prompt('Name your new status\n(e.g. "At the gym", "Library", "On vacation")');
+  if (label === null) return;
+  const trimmed = label.trim();
+  if (!trimmed) return;
+  let emoji = prompt('Pick an emoji (any single character)\n(leave blank for ✨)') || '';
+  emoji = emoji.trim() || '✨';
+  Data.addCustomStatus(getActivePlayer(), trimmed, emoji);
+  renderUI();
+  window.gameNeedsRedraw = true;
+}
+
+function removeCustomStatus(statusId) {
+  if (!confirm('Delete this status?')) return;
+  Data.removeCustomStatus(getActivePlayer(), statusId);
   renderUI();
   window.gameNeedsRedraw = true;
 }

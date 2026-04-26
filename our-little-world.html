@@ -489,6 +489,37 @@ header {
   font-size: 18px;
 }
 
+.status-item.status-add {
+  background: rgba(255,255,255,0.02);
+  border-style: dashed;
+  border-color: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.55);
+}
+.status-item.status-add:hover {
+  border-color: rgba(255,215,0,0.55);
+  color: var(--gold);
+  background: rgba(255,215,0,0.06);
+}
+.status-item.status-add .status-emoji { color: inherit; }
+
+.status-remove {
+  position: absolute;
+  top: 4px; left: 6px;
+  width: 20px; height: 20px;
+  border: none;
+  background: rgba(0,0,0,0.4);
+  color: rgba(255,255,255,0.7);
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  padding: 0;
+}
+.status-item:hover .status-remove { opacity: 1; }
+.status-remove:hover { background: #E74C3C; color: #fff; }
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -911,6 +942,7 @@ const DEFAULT_PLAYERS = {
     coins: 0, outfit: 'default', ownedOutfits: ['default'], furniture: [],
     status: 'home', pose: 'stand', snapTarget: null, pin: null,
     homeLayout: {}, homeLayoutSavedAt: {},
+    customStatuses: [],
     goals: [], todos: [], customRewards: [], achievements: [],
     createdAt: Date.now()
   },
@@ -920,6 +952,7 @@ const DEFAULT_PLAYERS = {
     coins: 0, outfit: 'default', ownedOutfits: ['default'], furniture: [],
     status: 'home', pose: 'stand', snapTarget: null, pin: null,
     homeLayout: {}, homeLayoutSavedAt: {},
+    customStatuses: [],
     goals: [], todos: [], customRewards: [], achievements: [],
     createdAt: Date.now()
   }
@@ -1311,6 +1344,34 @@ const Data = {
     const homeLayout        = { ...(player.homeLayout || {}),        [key]: xPct };
     const homeLayoutSavedAt = { ...(player.homeLayoutSavedAt || {}), [key]: Date.now() };
     this.updatePlayer(playerId, { homeLayout, homeLayoutSavedAt });
+  },
+
+  // ─── Custom statuses (player-defined empty rooms) ───────────────────────────
+
+  getCustomStatuses(playerId) {
+    return this.getPlayer(playerId).customStatuses || [];
+  },
+
+  addCustomStatus(playerId, label, emoji) {
+    const player = this.getPlayer(playerId);
+    const trimmed = (label || '').trim();
+    if (!trimmed) return null;
+    const status = {
+      id: 'custom-' + Date.now().toString(),
+      label: trimmed.slice(0, 24),
+      emoji: (emoji || '✨').trim().slice(0, 4) || '✨',
+    };
+    const list = [...(player.customStatuses || []), status];
+    this.updatePlayer(playerId, { customStatuses: list });
+    return status;
+  },
+
+  removeCustomStatus(playerId, statusId) {
+    const player = this.getPlayer(playerId);
+    const list   = (player.customStatuses || []).filter(s => s.id !== statusId);
+    const updates = { customStatuses: list };
+    if (player.status === statusId) updates.status = 'home';
+    this.updatePlayer(playerId, updates);
   },
 };
 
@@ -1708,28 +1769,26 @@ function getOfficeSeatPositions(paneW, H) {
 function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H, highlightFurnitureKey) {
   const bs = bjergPlayer.status  || 'home';
   const hs = hungryPlayer.status || 'home';
+  const bCustoms = _customStatusMap(bjergPlayer);
+  const hCustoms = _customStatusMap(hungryPlayer);
 
   if (bs === hs) {
-    // Same scene — full width
-    _drawScenePane(ctx, bs, 0, W, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
-    _drawSceneLabel(ctx, bs, 0, W);
+    _drawScenePane(ctx, bs, 0, W, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey, bCustoms);
+    _drawSceneLabel(ctx, bs, 0, W, bCustoms);
     return {
       bjerg:  { offX: 0, paneW: W, scene: bs },
       hungry: { offX: 0, paneW: W, scene: hs },
     };
   } else {
     const half = Math.floor(W / 2);
-    // Left pane: bjerg's scene
-    _drawScenePane(ctx, bs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
-    _drawSceneLabel(ctx, bs, 0, half);
-    // Divider
+    _drawScenePane(ctx, bs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey, bCustoms);
+    _drawSceneLabel(ctx, bs, 0, half, bCustoms);
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(half - 2, 0, 4, H);
-    // Right pane: hungry's scene
     ctx.save();
     ctx.translate(half, 0);
-    _drawScenePane(ctx, hs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey);
-    _drawSceneLabel(ctx, hs, 0, half);
+    _drawScenePane(ctx, hs, 0, half, H, bjergPlayer.furniture, hungryPlayer.furniture, highlightFurnitureKey, hCustoms);
+    _drawSceneLabel(ctx, hs, 0, half, hCustoms);
     ctx.restore();
     return {
       bjerg:  { offX: 0,    paneW: half, scene: bs },
@@ -1738,9 +1797,20 @@ function drawWorldAndGetPanes(ctx, bjergPlayer, hungryPlayer, W, H, highlightFur
   }
 }
 
-function _drawSceneLabel(ctx, sceneId, offX, paneW) {
+function _customStatusMap(player) {
+  const out = {};
+  (player?.customStatuses || []).forEach(s => { out[s.id] = s; });
+  return out;
+}
+
+function _drawSceneLabel(ctx, sceneId, offX, paneW, customMap) {
   const labels = { home: '🏠 Home', classroom: '📚 School', office: '💼 Work', cafe: '☕ Café' };
-  const text   = labels[sceneId] || sceneId;
+  let text = labels[sceneId];
+  if (!text && customMap && customMap[sceneId]) {
+    const c = customMap[sceneId];
+    text = `${c.emoji} ${c.label}`;
+  }
+  text = text || sceneId;
   ctx.save();
   ctx.font      = '10px "Press Start 2P", monospace';
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
@@ -1749,7 +1819,7 @@ function _drawSceneLabel(ctx, sceneId, offX, paneW) {
   ctx.restore();
 }
 
-function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH, highlightFurnitureKey) {
+function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH, highlightFurnitureKey, customMap) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(offX, 0, paneW, H);
@@ -1760,7 +1830,10 @@ function _drawScenePane(ctx, sceneId, offX, paneW, H, furB, furH, highlightFurni
     case 'classroom': _drawClassroom(ctx, paneW, H); break;
     case 'office':    _drawOffice(ctx, paneW, H); break;
     case 'cafe':      _drawCafe(ctx, paneW, H); break;
-    default:          _drawHome(ctx, paneW, H, []); break;
+    default:
+      if (customMap && customMap[sceneId]) _drawEmptyRoom(ctx, paneW, H);
+      else                                 _drawHome(ctx, paneW, H, []);
+      break;
   }
   ctx.restore();
 }
@@ -2066,6 +2139,30 @@ function _drawCafeTable(ctx, x, y) {
   pxr(ctx, x+2, y+2, 86, 4, '#D4AA7D');
   pxr(ctx, x+8, y+10, 8, 30, '#A0785A');
   pxr(ctx, x+74, y+10, 8, 30, '#A0785A');
+}
+
+// Empty user-defined room — just floor + wallpapered wall + baseboard.
+function _drawEmptyRoom(ctx, W, H) {
+  const floorY = Math.floor(H * 0.6);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#B8D4F8'); g.addColorStop(1, '#E8D5F5');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  pxr(ctx, 0, 0, W, floorY, '#F0E6D3');
+  ctx.fillStyle = 'rgba(180,140,100,0.12)';
+  for (let xi = 20; xi < W; xi += 30)
+    for (let yi = 20; yi < floorY; yi += 30) {
+      ctx.beginPath(); ctx.arc(xi, yi, 2, 0, Math.PI*2); ctx.fill();
+    }
+
+  const fg = ctx.createLinearGradient(0, floorY, 0, H);
+  fg.addColorStop(0, '#D4A853'); fg.addColorStop(1, '#B8893A');
+  ctx.fillStyle = fg; ctx.fillRect(0, floorY, W, H - floorY);
+  ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;
+  for (let xi = 0; xi < W; xi += 55) {
+    ctx.beginPath(); ctx.moveTo(xi, floorY); ctx.lineTo(xi, H); ctx.stroke();
+  }
+  pxr(ctx, 0, floorY, W, 5, '#C49A6C');
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -2657,6 +2754,7 @@ function renderStatusPanel() {
     { id: 'office',    label: 'At Work',     emoji: '💼' },
     { id: 'cafe',      label: 'At Café',     emoji: '☕' },
   ];
+  const customs = player.customStatuses || [];
 
   let html = `<div class="panel-section">
     <div class="section-header"><span>📍 Current Status</span></div>
@@ -2670,6 +2768,24 @@ function renderStatusPanel() {
         ${player.status === s.id ? '<div class="status-check">✓</div>' : ''}
       </div>`;
   });
+
+  customs.forEach(s => {
+    const safeLabel = String(s.label).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const safeEmoji = String(s.emoji).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    html += `
+      <div class="status-item ${player.status === s.id ? 'active' : ''}" onclick="setStatus('${s.id}')">
+        <button class="status-remove" onclick="event.stopPropagation(); removeCustomStatus('${s.id}')" title="Delete this status">×</button>
+        <div class="status-emoji">${safeEmoji}</div>
+        <div class="status-label">${safeLabel}</div>
+        ${player.status === s.id ? '<div class="status-check">✓</div>' : ''}
+      </div>`;
+  });
+
+  html += `
+    <div class="status-item status-add" onclick="addCustomStatus()" title="Create a new status">
+      <div class="status-emoji">＋</div>
+      <div class="status-label">New status</div>
+    </div>`;
 
   html += `</div></div>`;
 
@@ -2705,6 +2821,25 @@ function renderStatusPanel() {
 
 function setStatus(statusId) {
   Data.setStatus(getActivePlayer(), statusId);
+  renderUI();
+  window.gameNeedsRedraw = true;
+}
+
+function addCustomStatus() {
+  const label = prompt('Name your new status\n(e.g. "At the gym", "Library", "On vacation")');
+  if (label === null) return;
+  const trimmed = label.trim();
+  if (!trimmed) return;
+  let emoji = prompt('Pick an emoji (any single character)\n(leave blank for ✨)') || '';
+  emoji = emoji.trim() || '✨';
+  Data.addCustomStatus(getActivePlayer(), trimmed, emoji);
+  renderUI();
+  window.gameNeedsRedraw = true;
+}
+
+function removeCustomStatus(statusId) {
+  if (!confirm('Delete this status?')) return;
+  Data.removeCustomStatus(getActivePlayer(), statusId);
   renderUI();
   window.gameNeedsRedraw = true;
 }
@@ -2925,6 +3060,17 @@ function _placeCharInScene(state, player, pane, H, seatIndex) {
     state.x    = pW * (seatIndex === 0 ? 0.3 : 0.5);
     state.y    = floorY;
     state.pose = 'stand';
+    state.idle = true;
+    return;
+  }
+
+  // Custom user-defined empty room — just stand on the floor near the centre.
+  if (scene !== 'home') {
+    state.x    = pW * (seatIndex === 0 ? 0.35 : 0.55);
+    state.targetX = state.x;
+    state.y    = floorY;
+    state.pose = 'stand';
+    state.snapTarget = null;
     state.idle = true;
     return;
   }
