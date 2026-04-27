@@ -7,7 +7,7 @@ const SPRITE_H = 24;
 const OUTFIT_COLORS = {
   default: { shirt: '#5B9BD5', pants: '#2C3E50' },
   red:     { shirt: '#E74C3C', pants: '#922B21', shape: 'dress'  },
-  blue:    { shirt: '#2980B9', pants: '#1A5276' },
+  blue:    { shirt: '#2A2A2E', pants: '#1C1C20', shape: 'suit'   },
   green:   { shirt: '#27AE60', pants: '#1D6A3A', shape: 'hoodie' },
   purple:  { shirt: '#8E44AD', pants: '#5B2C6F' },
   yellow:  { shirt: '#F1C40F', pants: '#9A7D0A', shape: 'jacket' },
@@ -56,30 +56,51 @@ function buildSpriteGrid(player) {
 // Each overlay mutates only the body rows; head/face cells are untouched so
 // the same overlay works for both hairstyles.
 const _OUTFIT_OVERLAYS = {
-  // A-line dress: cinched waist (row 18) flares into a wide skirt hem (row
-  // 20), legs visible in skin tone for one row before the boots.
+  // A-line dress: cinched waist (row 18, 6 cells wide) flares aggressively
+  // through rows 19-20 to a full-width hem, with a strip of bare leg
+  // peeking out at row 21 above the boots.
   dress(grid, { T, sk, st, stH, stD }) {
+    // Row 18: cinched waist (6 wide, narrower than the bodice above).
     grid[18] = grid[18].slice();
-    grid[18][3] = T;     grid[18][10] = T;
-    grid[18][4] = stD;   grid[18][9]  = stD;
-    grid[18][5] = st;    grid[18][8]  = st;
-    grid[18][6] = stH;   grid[18][7]  = stH;
+    grid[18][0] = grid[18][1] = grid[18][2] = grid[18][3] = T;
+    grid[18][4] = stD;
+    grid[18][5] = st;
+    grid[18][6] = stH;
+    grid[18][7] = stH;
+    grid[18][8] = st;
+    grid[18][9] = stD;
+    grid[18][10] = grid[18][11] = grid[18][12] = grid[18][13] = T;
 
+    // Row 19: mid flare (10 wide).
     grid[19] = grid[19].slice();
-    grid[19][3] = stD;   grid[19][10] = stD;
-    grid[19][4] = st;    grid[19][5]  = st;
-    grid[19][6] = stH;   grid[19][7]  = st;
-    grid[19][8] = st;    grid[19][9]  = st;
+    grid[19][0] = grid[19][1] = T;
+    grid[19][2]  = stD;
+    grid[19][3]  = st;
+    grid[19][4]  = st;
+    grid[19][5]  = st;
+    grid[19][6]  = stH;
+    grid[19][7]  = stH;
+    grid[19][8]  = st;
+    grid[19][9]  = st;
+    grid[19][10] = st;
+    grid[19][11] = stD;
+    grid[19][12] = grid[19][13] = T;
 
+    // Row 20: full-width hem (14 wide) — the widest point of the skirt.
     grid[20] = grid[20].slice();
-    grid[20][2]  = stD;  grid[20][11] = stD;
-    for (let col = 3; col <= 10; col++) grid[20][col] = st;
-    grid[20][6] = stH;
+    grid[20][0]  = stD;
+    for (let col = 1; col <= 12; col++) grid[20][col] = st;
+    grid[20][6]  = stH;
+    grid[20][7]  = stH;
+    grid[20][13] = stD;
 
+    // Row 21: bare legs visible between the hem and the boots.
     grid[21] = grid[21].slice();
     for (let col = 0; col < 14; col++) grid[21][col] = T;
-    grid[21][4] = sk;    grid[21][5] = sk;
-    grid[21][8] = sk;    grid[21][9] = sk;
+    grid[21][4] = sk;
+    grid[21][5] = sk;
+    grid[21][8] = sk;
+    grid[21][9] = sk;
   },
 
   // Hoodie: visible hood opening at the neckline + a pair of drawstrings
@@ -98,6 +119,44 @@ const _OUTFIT_OVERLAYS = {
     grid[16] = grid[16].slice();
     grid[16][6] = '#E0E0E0';
     grid[16][7] = '#E0E0E0';
+  },
+
+  // Formal suit: notch lapels (stH on cols 5/8), V of white dress shirt at
+  // the collar, then a contrasting tie running down the centre of the
+  // closed jacket. Dark suit colour fills the rest from OUTFIT_COLORS.
+  suit(grid, { st, stH, stD }) {
+    const tie    = '#8B1A1A'; // burgundy tie
+    const tieH   = '#B23030'; // tie highlight (knot sheen)
+    const shirtW = '#FFFFFF';
+    const shirtS = '#E0E0E0'; // shirt shadow under the knot
+
+    // Row 14: collar — white V at the top of the chest, lapels framing it.
+    grid[14] = grid[14].slice();
+    grid[14][5] = stH;
+    grid[14][6] = shirtW;
+    grid[14][7] = shirtW;
+    grid[14][8] = stH;
+
+    // Row 15: tie knot sits between the lapels; a sliver of shirt still shows.
+    grid[15] = grid[15].slice();
+    grid[15][5] = stH;
+    grid[15][6] = shirtS;
+    grid[15][7] = tieH;
+    grid[15][8] = stH;
+
+    // Row 16: tie body (full 2-cell width down the centre of the buttoned jacket).
+    grid[16] = grid[16].slice();
+    grid[16][5] = stD;
+    grid[16][6] = tie;
+    grid[16][7] = tie;
+    grid[16][8] = stD;
+
+    // Row 17: tie continues, suit shadow at the placket on either side.
+    grid[17] = grid[17].slice();
+    grid[17][5] = stD;
+    grid[17][6] = tie;
+    grid[17][7] = tieH;
+    grid[17][8] = stD;
   },
 
   // Open jacket: white inner shirt down the centre + lapel highlights at
