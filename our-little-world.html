@@ -964,7 +964,7 @@ const SHOP_ITEMS = {
   outfits: [
     { id: 'default',    name: 'Default',       price: 0,    color: null      },
     { id: 'red',        name: 'Red Dress',     price: 150,  color: '#E74C3C' },
-    { id: 'blue',       name: 'Blue Suit',     price: 150,  color: '#2980B9' },
+    { id: 'blue',       name: 'Black Suit',    price: 150,  color: '#2A2A2E' },
     { id: 'green',      name: 'Green Hoodie',  price: 120,  color: '#27AE60' },
     { id: 'purple',     name: 'Purple Robe',   price: 200,  color: '#8E44AD' },
     { id: 'yellow',     name: 'Yellow Jacket', price: 180,  color: '#F1C40F' },
@@ -1495,7 +1495,7 @@ const SPRITE_H = 24;
 const OUTFIT_COLORS = {
   default: { shirt: '#5B9BD5', pants: '#2C3E50' },
   red:     { shirt: '#E74C3C', pants: '#922B21', shape: 'dress'  },
-  blue:    { shirt: '#2980B9', pants: '#1A5276' },
+  blue:    { shirt: '#2A2A2E', pants: '#1C1C20', shape: 'suit'   },
   green:   { shirt: '#27AE60', pants: '#1D6A3A', shape: 'hoodie' },
   purple:  { shirt: '#8E44AD', pants: '#5B2C6F' },
   yellow:  { shirt: '#F1C40F', pants: '#9A7D0A', shape: 'jacket' },
@@ -1541,28 +1541,76 @@ function buildSpriteGrid(player) {
 }
 
 const _OUTFIT_OVERLAYS = {
+  // A-line dress: cinched waist (row 18, 6 cells wide) flares aggressively
+  // through rows 19-20 to a full-width hem, with bare leg at row 21.
   dress(grid, { T, sk, st, stH, stD }) {
     grid[18] = grid[18].slice();
-    grid[18][3] = T;     grid[18][10] = T;
-    grid[18][4] = stD;   grid[18][9]  = stD;
-    grid[18][5] = st;    grid[18][8]  = st;
-    grid[18][6] = stH;   grid[18][7]  = stH;
+    grid[18][0] = grid[18][1] = grid[18][2] = grid[18][3] = T;
+    grid[18][4] = stD;
+    grid[18][5] = st;
+    grid[18][6] = stH;
+    grid[18][7] = stH;
+    grid[18][8] = st;
+    grid[18][9] = stD;
+    grid[18][10] = grid[18][11] = grid[18][12] = grid[18][13] = T;
 
     grid[19] = grid[19].slice();
-    grid[19][3] = stD;   grid[19][10] = stD;
-    grid[19][4] = st;    grid[19][5]  = st;
-    grid[19][6] = stH;   grid[19][7]  = st;
-    grid[19][8] = st;    grid[19][9]  = st;
+    grid[19][0] = grid[19][1] = T;
+    grid[19][2]  = stD;
+    grid[19][3]  = st;
+    grid[19][4]  = st;
+    grid[19][5]  = st;
+    grid[19][6]  = stH;
+    grid[19][7]  = stH;
+    grid[19][8]  = st;
+    grid[19][9]  = st;
+    grid[19][10] = st;
+    grid[19][11] = stD;
+    grid[19][12] = grid[19][13] = T;
 
     grid[20] = grid[20].slice();
-    grid[20][2]  = stD;  grid[20][11] = stD;
-    for (let col = 3; col <= 10; col++) grid[20][col] = st;
-    grid[20][6] = stH;
+    grid[20][0]  = stD;
+    for (let col = 1; col <= 12; col++) grid[20][col] = st;
+    grid[20][6]  = stH;
+    grid[20][7]  = stH;
+    grid[20][13] = stD;
 
     grid[21] = grid[21].slice();
     for (let col = 0; col < 14; col++) grid[21][col] = T;
-    grid[21][4] = sk;    grid[21][5] = sk;
-    grid[21][8] = sk;    grid[21][9] = sk;
+    grid[21][4] = sk;
+    grid[21][5] = sk;
+    grid[21][8] = sk;
+    grid[21][9] = sk;
+  },
+  suit(grid, { st, stH, stD }) {
+    const tie    = '#8B1A1A';
+    const tieH   = '#B23030';
+    const shirtW = '#FFFFFF';
+    const shirtS = '#E0E0E0';
+
+    grid[14] = grid[14].slice();
+    grid[14][5] = stH;
+    grid[14][6] = shirtW;
+    grid[14][7] = shirtW;
+    grid[14][8] = stH;
+
+    grid[15] = grid[15].slice();
+    grid[15][5] = stH;
+    grid[15][6] = shirtS;
+    grid[15][7] = tieH;
+    grid[15][8] = stH;
+
+    grid[16] = grid[16].slice();
+    grid[16][5] = stD;
+    grid[16][6] = tie;
+    grid[16][7] = tie;
+    grid[16][8] = stD;
+
+    grid[17] = grid[17].slice();
+    grid[17][5] = stD;
+    grid[17][6] = tie;
+    grid[17][7] = tieH;
+    grid[17][8] = stD;
   },
   hoodie(grid, { T, st, stH, stD }) {
     grid[13] = grid[13].slice();
