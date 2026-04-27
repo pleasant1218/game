@@ -36,7 +36,7 @@ const SHOP_ITEMS = {
   outfits: [
     { id: 'default',    name: 'Default',       price: 0,    color: null      },
     { id: 'red',        name: 'Red Dress',     price: 150,  color: '#E74C3C' },
-    { id: 'blue',       name: 'Blue Suit',     price: 150,  color: '#2980B9' },
+    { id: 'blue',       name: 'Black Suit',    price: 150,  color: '#2A2A2E' },
     { id: 'green',      name: 'Green Hoodie',  price: 120,  color: '#27AE60' },
     { id: 'purple',     name: 'Purple Robe',   price: 200,  color: '#8E44AD' },
     { id: 'yellow',     name: 'Yellow Jacket', price: 180,  color: '#F1C40F' },
