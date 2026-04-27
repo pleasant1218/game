@@ -1494,11 +1494,11 @@ const SPRITE_H = 24;
 
 const OUTFIT_COLORS = {
   default: { shirt: '#5B9BD5', pants: '#2C3E50' },
-  red:     { shirt: '#E74C3C', pants: '#922B21' },
+  red:     { shirt: '#E74C3C', pants: '#922B21', shape: 'dress'  },
   blue:    { shirt: '#2980B9', pants: '#1A5276' },
-  green:   { shirt: '#27AE60', pants: '#1D6A3A' },
+  green:   { shirt: '#27AE60', pants: '#1D6A3A', shape: 'hoodie' },
   purple:  { shirt: '#8E44AD', pants: '#5B2C6F' },
-  yellow:  { shirt: '#F1C40F', pants: '#9A7D0A' },
+  yellow:  { shirt: '#F1C40F', pants: '#9A7D0A', shape: 'jacket' },
   pink:    { shirt: '#E91E8C', pants: '#8C1255' },
   black:   { shirt: '#2C3E50', pants: '#1A252F' },
 };
@@ -1521,26 +1521,90 @@ function _lt(hex, amt) {
 function buildSpriteGrid(player) {
   const T   = 'transparent';
   const sk  = player.skin;
-  const skH = _lt(sk, 30);          // forehead highlight
+  const skH = _lt(sk, 30);
   const hr  = player.hairColor;
-  const hrH = _lt(hr, 50);          // hair highlight
-  const hrD = _dk(hr, 35);          // hair shadow
-  const hrX = _lt(hr, 85);          // extra bright wave crest
+  const hrH = _lt(hr, 50);
+  const hrD = _dk(hr, 35);
+  const hrX = _lt(hr, 85);
   const outfit = OUTFIT_COLORS[player.outfit || 'default'];
   const st  = outfit.shirt;
-  const stH = _lt(st, 32);          // shirt highlight
-  const stD = _dk(st, 42);          // shirt shadow
+  const stH = _lt(st, 32);
+  const stD = _dk(st, 42);
   const pn  = outfit.pants;
-  const pnD = _dk(pn, 42);          // pants shadow
-  const blt = _dk(pn, 70);          // belt
+  const pnD = _dk(pn, 42);
+  const blt = _dk(pn, 70);
+  const grid = _baseSpriteGrid(player, { T, sk, skH, hr, hrH, hrD, hrX, st, stH, stD, pn, pnD, blt });
+  if (outfit.shape && _OUTFIT_OVERLAYS[outfit.shape]) {
+    _OUTFIT_OVERLAYS[outfit.shape](grid, { T, sk, st, stH, stD });
+  }
+  return grid;
+}
+
+const _OUTFIT_OVERLAYS = {
+  dress(grid, { T, sk, st, stH, stD }) {
+    grid[18] = grid[18].slice();
+    grid[18][3] = T;     grid[18][10] = T;
+    grid[18][4] = stD;   grid[18][9]  = stD;
+    grid[18][5] = st;    grid[18][8]  = st;
+    grid[18][6] = stH;   grid[18][7]  = stH;
+
+    grid[19] = grid[19].slice();
+    grid[19][3] = stD;   grid[19][10] = stD;
+    grid[19][4] = st;    grid[19][5]  = st;
+    grid[19][6] = stH;   grid[19][7]  = st;
+    grid[19][8] = st;    grid[19][9]  = st;
+
+    grid[20] = grid[20].slice();
+    grid[20][2]  = stD;  grid[20][11] = stD;
+    for (let col = 3; col <= 10; col++) grid[20][col] = st;
+    grid[20][6] = stH;
+
+    grid[21] = grid[21].slice();
+    for (let col = 0; col < 14; col++) grid[21][col] = T;
+    grid[21][4] = sk;    grid[21][5] = sk;
+    grid[21][8] = sk;    grid[21][9] = sk;
+  },
+  hoodie(grid, { T, st, stH, stD }) {
+    grid[13] = grid[13].slice();
+    for (let col = 5; col <= 8; col++) grid[13][col] = stD;
+
+    grid[14] = grid[14].slice();
+    grid[14][4] = stD;   grid[14][9] = stD;
+
+    grid[15] = grid[15].slice();
+    grid[15][6] = '#FFFFFF';
+    grid[15][7] = '#FFFFFF';
+
+    grid[16] = grid[16].slice();
+    grid[16][6] = '#E0E0E0';
+    grid[16][7] = '#E0E0E0';
+  },
+  jacket(grid, { st, stH, stD }) {
+    grid[14] = grid[14].slice();
+    grid[14][5] = stH;   grid[14][8] = stH;
+    grid[14][6] = '#FFFFFF';
+    grid[14][7] = '#FFFFFF';
+
+    for (let row = 15; row <= 17; row++) {
+      grid[row] = grid[row].slice();
+      grid[row][6] = '#FFFFFF';
+      grid[row][7] = '#FFFFFF';
+    }
+    grid[15][7] = stD;
+    grid[17][7] = stD;
+  },
+};
+
+function _baseSpriteGrid(player, c) {
+  const { T, sk, skH, hr, hrH, hrD, hrX, st, stH, stD, pn, pnD, blt } = c;
   const ey  = player.eyeColor;
-  const eyW = '#F2EAEA';            // warm eye white
-  const eyP = _dk(ey, 55);          // pupil
-  const brow = _dk(hr, 10);         // eyebrow
-  const ck  = '#F09878';            // cheek blush
-  const mt  = '#9A5038';            // mouth
-  const bt  = '#3D2B1F';            // boot
-  const btH = '#6B4830';            // boot toe highlight
+  const eyW = '#F2EAEA';
+  const eyP = _dk(ey, 55);
+  const brow = _dk(hr, 10);
+  const ck  = '#F09878';
+  const mt  = '#9A5038';
+  const bt  = '#3D2B1F';
+  const btH = '#6B4830';
 
   if (player.hairStyle === 'long') {
     // hungry — HUGE voluminous wavy long hair, big S-curve waves past shoulders
